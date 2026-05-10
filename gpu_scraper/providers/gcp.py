@@ -82,6 +82,7 @@ class GCPProvider(BaseProvider):
                     gpu_model=canonical,
                     vram_gb=lookup_vram(canonical),
                     price_per_hour=float(m.group(1)),
+                    price_unit="per_gpu",  # GCP pricing page lists /GPU/hr
                     region="us-central1",
                     contract_type="on-demand",
                     availability=True,
@@ -99,6 +100,7 @@ class GCPProvider(BaseProvider):
                 gpu_model=normalize_gpu_name(r["gpu"]),
                 vram_gb=r["vram"],
                 price_per_hour=r["price"],
+                price_unit="per_gpu",  # GCP pricing page lists /GPU/hr
                 region=r["region"],
                 contract_type=r["contract"],
                 availability=True,

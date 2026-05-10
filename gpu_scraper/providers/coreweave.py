@@ -70,6 +70,7 @@ class CoreWeaveProvider(BaseProvider):
                 gpu_model=canonical,
                 vram_gb=vram,
                 price_per_hour=price,
+                price_unit="per_gpu",  # CoreWeave lists /GPU/hr on pricing page
                 region="US",
                 contract_type="on-demand",
                 availability=True,
@@ -87,6 +88,7 @@ class CoreWeaveProvider(BaseProvider):
                 gpu_model=normalize_gpu_name(row["gpu"]),
                 vram_gb=row["vram"],
                 price_per_hour=row["price"],
+                price_unit="per_gpu",
                 region=row["region"],
                 contract_type="on-demand",
                 availability=True,

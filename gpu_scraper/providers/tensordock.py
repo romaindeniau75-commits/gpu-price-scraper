@@ -45,6 +45,7 @@ class TensorDockProvider(BaseProvider):
                     gpu_model=canonical,
                     vram_gb=vram,
                     price_per_hour=round(price, 4),
+                    price_unit="per_gpu",  # TensorDock API price field is /GPU/hr
                     region=region,
                     contract_type="on-demand",
                     availability=available,

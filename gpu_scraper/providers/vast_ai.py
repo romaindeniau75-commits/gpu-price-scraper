@@ -1,7 +1,12 @@
 """Vast.ai — public marketplace bundles API, no auth required.
 
+Price semantics
+---------------
+The raw API field ``dph_total`` is the hourly cost for the whole machine.
+We divide by ``num_gpus`` and store the result as ``price_per_hour`` so that
+``price_unit = "per_gpu"`` is accurate and analytics work directly.
+
 Without an API key the public endpoint returns ~64 top-scored offers.
-All GPU types and contract types are mixed in a single response.
 """
 from __future__ import annotations
 
@@ -31,13 +36,11 @@ class VastAIProvider(BaseProvider):
             if not dph_total:
                 continue
 
+            # Normalise at source: store $/GPU/hr so price_unit = "per_gpu"
             price_per_gpu = round(dph_total / num_gpus, 4)
             vram_mb: int = offer.get("gpu_ram", 0) or 0
-            # Vast.ai reports gpu_ram in MB
             vram_gb = vram_mb // 1024 if vram_mb > 1024 else (vram_mb or lookup_vram(canonical))
 
-            # Vast.ai bundles endpoint mixes on-demand and bid offers
-            # min_bid > 0 indicates a bid/spot listing
             is_spot = bool(offer.get("min_bid"))
             ctype = "spot" if is_spot else "on-demand"
 
@@ -45,7 +48,8 @@ class VastAIProvider(BaseProvider):
                 provider=self.name,
                 gpu_model=canonical,
                 vram_gb=vram_gb,
-                price_per_hour=price_per_gpu,
+                price_per_hour=price_per_gpu,  # already per GPU
+                price_unit="per_gpu",
                 region=offer.get("geolocation", "Unknown"),
                 contract_type=ctype,
                 availability=bool(offer.get("rentable")),

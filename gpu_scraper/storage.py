@@ -29,7 +29,7 @@ PROVIDER_CONFIDENCE: dict[str, float] = {
 _DEFAULT_CONFIDENCE = 0.70
 
 # ---------------------------------------------------------------------------
-# DDL
+# DDL — initial schema
 # ---------------------------------------------------------------------------
 _SCHEMA = """
 PRAGMA journal_mode=WAL;
@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS gpu_price_observations (
     region                TEXT,
     country               TEXT,
     price_per_hour_usd    REAL    NOT NULL,
+    price_unit            TEXT    NOT NULL DEFAULT 'per_gpu',
+    price_per_gpu_hour    REAL    NOT NULL DEFAULT 0.0,
     currency              TEXT    NOT NULL DEFAULT 'USD',
     contract_type         TEXT,
     availability_status   INTEGER NOT NULL DEFAULT 1,
@@ -72,6 +74,46 @@ CREATE TABLE IF NOT EXISTS scrape_runs (
 );
 """
 
+# ---------------------------------------------------------------------------
+# Migration — idempotent: adds new columns and backfills legacy rows
+# ---------------------------------------------------------------------------
+# Providers whose API price is per-node (must divide by gpu_count):
+_PER_NODE_PROVIDERS = ("AWS", "Azure")
+
+_MIGRATION = """
+-- Add price_unit column (noop if already exists — caught in Python)
+-- Add price_per_gpu_hour column (same)
+
+-- Backfill price_unit for legacy rows
+UPDATE gpu_price_observations
+SET price_unit = CASE
+    WHEN provider IN ({per_node})
+    THEN 'per_node'
+    ELSE 'per_gpu'
+END
+WHERE price_unit = 'per_gpu' OR price_unit IS NULL;
+
+-- Backfill price_per_gpu_hour for rows where it is still 0 or NULL
+UPDATE gpu_price_observations
+SET price_per_gpu_hour = CASE
+    WHEN price_unit = 'per_node'
+    THEN ROUND(price_per_hour_usd / MAX(gpu_count, 1), 4)
+    ELSE price_per_hour_usd
+END
+WHERE (price_per_gpu_hour IS NULL OR price_per_gpu_hour = 0.0)
+  AND scrape_success = 1
+  AND price_per_hour_usd > 0;
+"""
+
+
+def _add_column_if_missing(con: sqlite3.Connection, column: str, definition: str) -> None:
+    """ALTER TABLE … ADD COLUMN is a no-op if the column already exists."""
+    existing = {row[1] for row in con.execute("PRAGMA table_info(gpu_price_observations)")}
+    if column not in existing:
+        con.execute(
+            f"ALTER TABLE gpu_price_observations ADD COLUMN {column} {definition}"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -80,7 +122,6 @@ CREATE TABLE IF NOT EXISTS scrape_runs (
 def _extract_country(region: str) -> str:
     """Best-effort country extraction from a region string."""
     r = region.lower()
-    # Cloud provider prefixes
     for prefix, code in [
         ("us-", "US"), ("eastus", "US"), ("westus", "US"), ("centralus", "US"),
         ("eu-", "EU"), ("europe", "EU"), ("westeurope", "EU"), ("northeurope", "EU"),
@@ -91,15 +132,12 @@ def _extract_country(region: str) -> str:
     ]:
         if r.startswith(prefix) or prefix in r:
             return code
-
-    # Vast.ai / TensorDock: "Czech Republic / Prague", "United States, US"
     if "/" in region:
         return region.split("/")[0].strip()
     if "," in region:
         parts = region.split(",")
         last = parts[-1].strip()
         return last if len(last) <= 3 else parts[0].strip()
-
     return region or "Unknown"
 
 
@@ -128,14 +166,25 @@ class PriceDatabase:
     # ------------------------------------------------------------------ init
 
     def init(self) -> None:
-        """Create tables and indexes if they do not exist."""
+        """Create tables/indexes and run idempotent column migrations."""
         with self._conn() as con:
             con.executescript(_SCHEMA)
+            # Idempotent column additions for legacy databases
+            _add_column_if_missing(con, "price_unit",
+                                   "TEXT NOT NULL DEFAULT 'per_gpu'")
+            _add_column_if_missing(con, "price_per_gpu_hour",
+                                   "REAL NOT NULL DEFAULT 0.0")
+
+        # Run backfill in a separate connection so the schema commit lands first
+        per_node_placeholders = ",".join(f"'{p}'" for p in _PER_NODE_PROVIDERS)
+        with self._conn() as con:
+            con.executescript(
+                _MIGRATION.format(per_node=per_node_placeholders)
+            )
 
     # --------------------------------------------------------------- scrape run
 
     def start_run(self) -> str:
-        """Register a new scrape run; return its ID."""
         run_id = uuid.uuid4().hex
         ts = datetime.now(timezone.utc).isoformat()
         with self._conn() as con:
@@ -158,13 +207,8 @@ class PriceDatabase:
                 """UPDATE scrape_runs
                    SET finished_at=?, total_offers=?, providers_ok=?, providers_failed=?
                    WHERE id=?""",
-                (
-                    ts,
-                    total_offers,
-                    ",".join(providers_ok),
-                    ",".join(providers_failed),
-                    run_id,
-                ),
+                (ts, total_offers, ",".join(providers_ok),
+                 ",".join(providers_failed), run_id),
             )
 
     # --------------------------------------------------------------- save offers
@@ -189,42 +233,43 @@ class PriceDatabase:
                 o.gpu_model,
                 o.region or "",
                 country,
-                o.price_per_hour,
+                o.price_per_hour,          # raw API price
+                o.price_unit,              # "per_gpu" or "per_node"
+                o.price_per_gpu_hour,      # normalised analytics price
                 "USD",
                 o.contract_type,
                 1 if o.availability else 0,
                 o.vram_gb,
                 o.gpu_count,
-                None,          # source_url — not yet captured per-offer
+                None,                      # source_url
                 confidence,
-                1,             # scrape_success
-                None,          # error_message
+                1,                         # scrape_success
+                None,                      # error_message
             ))
 
-        # Also insert failure rows for providers that errored
+        # Insert failure rows for providers that errored
         for provider, err_msg in (provider_errors or {}).items():
             rows.append((
-                ts_now,
-                run_id,
-                provider,
-                None, "UNKNOWN", "", "", 0.0, "USD",
+                ts_now, run_id, provider,
+                None, "UNKNOWN", "", "", 0.0, "per_gpu", 0.0, "USD",
                 None, 0, None, 1, None,
                 PROVIDER_CONFIDENCE.get(provider, _DEFAULT_CONFIDENCE),
-                0,             # scrape_success = False
-                err_msg[:500],
+                0, err_msg[:500],
             ))
 
         with self._conn() as con:
             con.executemany(
                 """INSERT INTO gpu_price_observations
-                   (timestamp, scrape_run_id, provider, gpu_model_raw, gpu_model_normalized,
-                    region, country, price_per_hour_usd, currency, contract_type,
-                    availability_status, vram_gb, gpu_count, source_url,
+                   (timestamp, scrape_run_id, provider, gpu_model_raw,
+                    gpu_model_normalized, region, country,
+                    price_per_hour_usd, price_unit, price_per_gpu_hour,
+                    currency, contract_type, availability_status,
+                    vram_gb, gpu_count, source_url,
                     confidence_score, scrape_success, error_message)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 rows,
             )
-        return len([r for r in rows if r[15] == 1])  # count successes
+        return len([r for r in rows if r[17] == 1])  # scrape_success index
 
     # --------------------------------------------------------------- queries
 
@@ -235,10 +280,10 @@ class PriceDatabase:
         contract_filter: Optional[str] = None,
         hours: int = 24,
     ) -> list[sqlite3.Row]:
-        """Most recent successful observation per (provider, gpu, region, contract)."""
+        """Most recent successful observations within the time window."""
         wheres = [
             "scrape_success = 1",
-            "price_per_hour_usd > 0",
+            "price_per_gpu_hour > 0",
             f"timestamp >= datetime('now', '-{hours} hours')",
         ]
         params: list = []
@@ -270,7 +315,7 @@ class PriceDatabase:
         """All successful observations over the requested window."""
         wheres = [
             "scrape_success = 1",
-            "price_per_hour_usd > 0",
+            "price_per_gpu_hour > 0",
             f"timestamp >= datetime('now', '-{hours} hours')",
         ]
         params: list = []

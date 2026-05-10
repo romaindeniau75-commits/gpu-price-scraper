@@ -102,6 +102,7 @@ class OCIProvider(BaseProvider):
                 gpu_model=gpu_model,
                 vram_gb=lookup_vram(gpu_model),
                 price_per_hour=price,
+                price_unit="per_gpu",  # OCI lists /GPU/hr on product catalog
                 region="us-ashburn-1",
                 contract_type="on-demand",
                 availability=True,

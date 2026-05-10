@@ -1,4 +1,11 @@
-"""RunPod — public GraphQL API, no auth required."""
+"""RunPod — public GraphQL API, no auth required.
+
+Price semantics
+---------------
+RunPod sells individual GPUs; all price fields (``securePrice``,
+``communityPrice``, ``secureSpotPrice``) are $/GPU/hr.
+``price_unit = "per_gpu"``; ``gpu_count = 1`` per offer.
+"""
 from __future__ import annotations
 
 from ..models import GPUOffer
@@ -42,39 +49,42 @@ class RunPodProvider(BaseProvider):
             canonical = normalize_gpu_name(raw_name)
             vram = gt.get("memoryInGb") or lookup_vram(canonical)
 
-            # Secure cloud (data-centre grade) — on-demand
+            # Secure cloud (data-centre grade) — on-demand, per GPU
             if (price := gt.get("securePrice")) and price > 0:
                 offers.append(GPUOffer(
                     provider=self.name,
                     gpu_model=canonical,
                     vram_gb=vram,
                     price_per_hour=price,
+                    price_unit="per_gpu",
                     region="Global",
                     contract_type="on-demand",
                     availability=True,
                     raw_gpu_name=raw_name,
                 ))
 
-            # Secure cloud — spot
+            # Secure cloud — spot, per GPU
             if (spot := gt.get("secureSpotPrice")) and spot > 0:
                 offers.append(GPUOffer(
                     provider=self.name,
                     gpu_model=canonical,
                     vram_gb=vram,
                     price_per_hour=spot,
+                    price_unit="per_gpu",
                     region="Global",
                     contract_type="spot",
                     availability=True,
                     raw_gpu_name=raw_name,
                 ))
 
-            # Community cloud — on-demand
+            # Community cloud — on-demand, per GPU
             if (cprice := gt.get("communityPrice")) and cprice > 0:
                 offers.append(GPUOffer(
                     provider=f"{self.name} Community",
                     gpu_model=canonical,
                     vram_gb=vram,
                     price_per_hour=cprice,
+                    price_unit="per_gpu",
                     region="Global",
                     contract_type="on-demand",
                     availability=True,

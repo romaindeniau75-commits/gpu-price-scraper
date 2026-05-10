@@ -1,4 +1,14 @@
-"""Azure — public Retail Prices REST API, no auth required."""
+"""Azure — public Retail Prices REST API, no auth required.
+
+Price semantics
+---------------
+Azure Retail Prices are per VM-hour (the whole instance), not per GPU.
+``price_unit = "per_node"``; ``price_per_gpu_hour`` is auto-computed by
+GPUOffer as ``price_per_hour / gpu_count``.
+
+  Standard_ND96isr_H100_v5  = 8 × H100 SXM  →  price ÷ 8 per GPU
+  Standard_NC24ads_A100_v4  = 1 × A100 80GB  →  price ÷ 1  (same)
+"""
 from __future__ import annotations
 
 import re
@@ -15,17 +25,32 @@ _GPU_SKU_RE = re.compile(r"Standard_(NC|ND|NV)\d", re.I)
 
 # Map ARM SKU fragments → canonical GPU name
 _SKU_GPU: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"ND96isr_H100",            re.I), "H100 SXM"),
-    (re.compile(r"ND96amsr_A100",           re.I), "A100 80GB SXM"),
-    (re.compile(r"ND96asr_A100",            re.I), "A100 80GB SXM"),
-    (re.compile(r"NC\d+ads_A100",           re.I), "A100 80GB PCIe"),
-    (re.compile(r"NC96ads_A100",            re.I), "A100 80GB PCIe"),
+    (re.compile(r"ND96isr_H100",         re.I), "H100 SXM"),
+    (re.compile(r"ND96amsr_A100",        re.I), "A100 80GB SXM"),
+    (re.compile(r"ND96asr_v4",           re.I), "A100 80GB SXM"),
+    (re.compile(r"NC\d+ads_A100",        re.I), "A100 80GB PCIe"),
     (re.compile(r"NC24s_v3|NC48s_v3|NC96s_v3", re.I), "V100 16GB"),
-    (re.compile(r"NV\d+adms_A10",           re.I), "A10"),
-    (re.compile(r"NV\d+ads_A10",            re.I), "A10"),
+    (re.compile(r"NV\d+adms_A10",        re.I), "A10"),
+    (re.compile(r"NV\d+ads_A10",         re.I), "A10"),
 ]
 
-# Fetch GPU VM prices for one filter clause, following pagination
+# Hardcoded GPU count per SKU family (Azure ND/NC VMs are multi-GPU nodes).
+# Source: https://learn.microsoft.com/en-us/azure/virtual-machines/sizes-gpu
+_SKU_GPU_COUNT: dict[re.Pattern[str], int] = {
+    re.compile(r"ND96isr_H100",    re.I): 8,   # 8 × H100 SXM
+    re.compile(r"ND96amsr_A100",   re.I): 8,   # 8 × A100 80GB
+    re.compile(r"ND96asr_v4",      re.I): 8,   # 8 × A100 80GB
+    re.compile(r"NC96ads_A100",    re.I): 4,   # 4 × A100 80GB
+    re.compile(r"NC48ads_A100",    re.I): 2,   # 2 × A100 80GB
+    re.compile(r"NC24ads_A100",    re.I): 1,   # 1 × A100 80GB
+    re.compile(r"NC96s_v3",        re.I): 4,   # 4 × V100 16GB
+    re.compile(r"NC48s_v3",        re.I): 8,   # 8 × V100 16GB  (not in Azure, safety)
+    re.compile(r"NC24s_v3",        re.I): 4,   # 4 × V100 16GB
+    re.compile(r"NC12s_v3",        re.I): 2,   # 2 × V100 16GB
+    re.compile(r"NC6s_v3",         re.I): 1,   # 1 × V100 16GB
+}
+
+# Filters to fetch GPU VM pricing (two requests instead of one large one)
 _GPU_FILTERS = [
     "serviceName eq 'Virtual Machines' and contains(skuName, 'NC') and priceType eq 'Consumption'",
     "serviceName eq 'Virtual Machines' and contains(skuName, 'ND') and priceType eq 'Consumption'",
@@ -40,8 +65,10 @@ def _infer_gpu(sku_name: str) -> str:
 
 
 def _infer_gpu_count(sku_name: str) -> int:
-    m = re.search(r"_x(\d+)$", sku_name, re.I)
-    return int(m.group(1)) if m else 1
+    for pattern, count in _SKU_GPU_COUNT.items():
+        if pattern.search(sku_name):
+            return count
+    return 1
 
 
 def _contract_type(sku_name: str) -> str:
@@ -83,6 +110,7 @@ class AzureProvider(BaseProvider):
                         continue
 
                     gpu_model = _infer_gpu(sku)
+                    gpu_count = _infer_gpu_count(sku)
                     region: str = item.get("armRegionName", "unknown")
                     ctype = _contract_type(item.get("skuName", ""))
                     key = f"{sku}|{region}|{ctype}"
@@ -94,11 +122,12 @@ class AzureProvider(BaseProvider):
                         provider=self.name,
                         gpu_model=gpu_model,
                         vram_gb=lookup_vram(gpu_model),
-                        price_per_hour=retail_price,
+                        price_per_hour=retail_price,  # raw per-VM price
+                        price_unit="per_node",         # price_per_gpu_hour auto-computed
                         region=region,
                         contract_type=ctype,
                         availability=True,
-                        gpu_count=_infer_gpu_count(sku),
+                        gpu_count=gpu_count,
                         instance_type=sku,
                         raw_gpu_name=sku,
                     ))

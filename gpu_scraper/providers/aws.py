@@ -1,7 +1,12 @@
 """AWS — spot prices via public JSONP endpoint + static on-demand table.
 
-On-demand prices are fetched from the public AWS pricing JSON for us-east-1.
-Spot prices come from the real-time spot.js JSONP endpoint.
+Price semantics
+---------------
+AWS pricing is per-node (the full EC2 instance), not per GPU.
+``price_unit = "per_node"``; ``price_per_gpu_hour`` is auto-computed by
+GPUOffer as ``price_per_hour / gpu_count``.
+
+  p5.48xlarge  = 8 × H100 SXM  @  $55.04/node-hr  → $6.88/GPU-hr
 """
 from __future__ import annotations
 
@@ -25,43 +30,42 @@ _OD_URL = (
 # GPU instance families we care about
 _GPU_FAMILIES = {"p3", "p4d", "p4de", "p5", "g4dn", "g5", "g6"}
 
-# instance-type → (GPU model, count)
+# instance-type → (GPU model, gpu_count)
 _INSTANCE_GPU: dict[str, tuple[str, int]] = {
-    "p3.2xlarge":    ("V100 16GB",    1),
-    "p3.8xlarge":    ("V100 16GB",    4),
-    "p3.16xlarge":   ("V100 16GB",    8),
-    "p3dn.24xlarge": ("V100 32GB",    8),
+    "p3.2xlarge":    ("V100 16GB",     1),
+    "p3.8xlarge":    ("V100 16GB",     4),
+    "p3.16xlarge":   ("V100 16GB",     8),
+    "p3dn.24xlarge": ("V100 32GB",     8),
     "p4d.24xlarge":  ("A100 40GB SXM", 8),
     "p4de.24xlarge": ("A100 80GB SXM", 8),
-    "p5.48xlarge":   ("H100 SXM",     8),
-    "p5e.48xlarge":  ("H100 SXM",     8),
-    "g4dn.xlarge":   ("T4",           1),
-    "g4dn.2xlarge":  ("T4",           1),
-    "g4dn.4xlarge":  ("T4",           1),
-    "g4dn.8xlarge":  ("T4",           1),
-    "g4dn.12xlarge": ("T4",           4),
-    "g4dn.16xlarge": ("T4",           1),
-    "g5.xlarge":     ("A10G",         1),
-    "g5.2xlarge":    ("A10G",         1),
-    "g5.4xlarge":    ("A10G",         1),
-    "g5.8xlarge":    ("A10G",         1),
-    "g5.12xlarge":   ("A10G",         4),
-    "g5.16xlarge":   ("A10G",         1),
-    "g5.24xlarge":   ("A10G",         4),
-    "g5.48xlarge":   ("A10G",         8),
-    "g6.xlarge":     ("L4",           1),
-    "g6.4xlarge":    ("L4",           1),
-    "g6.8xlarge":    ("L4",           1),
-    "g6.12xlarge":   ("L4",           4),
-    "g6.16xlarge":   ("L4",           1),
-    "g6.24xlarge":   ("L4",           4),
-    "g6.48xlarge":   ("L4",           8),
+    "p5.48xlarge":   ("H100 SXM",      8),
+    "p5e.48xlarge":  ("H100 SXM",      8),
+    "g4dn.xlarge":   ("T4",            1),
+    "g4dn.2xlarge":  ("T4",            1),
+    "g4dn.4xlarge":  ("T4",            1),
+    "g4dn.8xlarge":  ("T4",            1),
+    "g4dn.12xlarge": ("T4",            4),
+    "g4dn.16xlarge": ("T4",            1),
+    "g5.xlarge":     ("A10G",          1),
+    "g5.2xlarge":    ("A10G",          1),
+    "g5.4xlarge":    ("A10G",          1),
+    "g5.8xlarge":    ("A10G",          1),
+    "g5.12xlarge":   ("A10G",          4),
+    "g5.16xlarge":   ("A10G",          1),
+    "g5.24xlarge":   ("A10G",          4),
+    "g5.48xlarge":   ("A10G",          8),
+    "g6.xlarge":     ("L4",            1),
+    "g6.4xlarge":    ("L4",            1),
+    "g6.8xlarge":    ("L4",            1),
+    "g6.12xlarge":   ("L4",            4),
+    "g6.16xlarge":   ("L4",            1),
+    "g6.24xlarge":   ("L4",            4),
+    "g6.48xlarge":   ("L4",            8),
 }
 
 
 def _is_gpu_instance(itype: str) -> bool:
-    family = itype.split(".")[0]
-    return family in _GPU_FAMILIES
+    return itype.split(".")[0] in _GPU_FAMILIES
 
 
 class AWSProvider(BaseProvider):
@@ -106,12 +110,15 @@ class AWSProvider(BaseProvider):
                         if price <= 0:
                             continue
 
-                        gpu_model, gpu_count = _INSTANCE_GPU.get(itype, (normalize_gpu_name(itype), 1))
+                        gpu_model, gpu_count = _INSTANCE_GPU.get(
+                            itype, (normalize_gpu_name(itype), 1)
+                        )
                         offers.append(GPUOffer(
                             provider=self.name,
                             gpu_model=gpu_model,
                             vram_gb=lookup_vram(gpu_model),
-                            price_per_hour=round(price / gpu_count, 4),  # per-GPU price
+                            price_per_hour=price,   # raw node price — do NOT divide here
+                            price_unit="per_node",  # price_per_gpu_hour auto-computed
                             region=region,
                             contract_type="spot",
                             availability=True,
@@ -124,14 +131,7 @@ class AWSProvider(BaseProvider):
     # ------------------------------------------------------------------ on-demand
 
     async def _fetch_on_demand(self) -> list[GPUOffer]:
-        """Fetch on-demand GPU pricing from the us-east-1 public pricing JSON.
-
-        The file is ~200 MB; we stream it and early-exit once we've parsed
-        all known GPU SKUs. Falls back to an empty list if too slow.
-        """
         client = await self._get_client()
-
-        # Fetch the full JSON — only for us-east-1 to keep size manageable
         resp = await client.get(_OD_URL)
         resp.raise_for_status()
 
@@ -143,18 +143,20 @@ class AWSProvider(BaseProvider):
         products: dict = data.get("products", {})
         terms: dict = data.get("terms", {}).get("OnDemand", {})
 
-        # Build sku → instance-type map for GPU instances
         sku_itype: dict[str, str] = {}
         for sku, prod in products.items():
             attrs = prod.get("attributes", {})
             itype: str = attrs.get("instanceType", "")
-            if _is_gpu_instance(itype) and attrs.get("operatingSystem") == "Linux" and attrs.get("tenancy") == "Shared":
+            if (
+                _is_gpu_instance(itype)
+                and attrs.get("operatingSystem") == "Linux"
+                and attrs.get("tenancy") == "Shared"
+            ):
                 sku_itype[sku] = itype
 
         offers: list[GPUOffer] = []
         for sku, itype in sku_itype.items():
-            sku_terms = terms.get(sku, {})
-            for offer_term in sku_terms.values():
+            for offer_term in terms.get(sku, {}).values():
                 for dim in offer_term.get("priceDimensions", {}).values():
                     try:
                         price = float(dim["pricePerUnit"]["USD"])
@@ -162,12 +164,15 @@ class AWSProvider(BaseProvider):
                         continue
                     if price <= 0:
                         continue
-                    gpu_model, gpu_count = _INSTANCE_GPU.get(itype, (normalize_gpu_name(itype), 1))
+                    gpu_model, gpu_count = _INSTANCE_GPU.get(
+                        itype, (normalize_gpu_name(itype), 1)
+                    )
                     offers.append(GPUOffer(
                         provider=self.name,
                         gpu_model=gpu_model,
                         vram_gb=lookup_vram(gpu_model),
-                        price_per_hour=round(price / gpu_count, 4),  # per-GPU price
+                        price_per_hour=price,   # raw node price — do NOT divide here
+                        price_unit="per_node",  # price_per_gpu_hour auto-computed
                         region="us-east-1",
                         contract_type="on-demand",
                         availability=True,
@@ -175,5 +180,4 @@ class AWSProvider(BaseProvider):
                         instance_type=itype,
                         raw_gpu_name=itype,
                     ))
-
         return offers

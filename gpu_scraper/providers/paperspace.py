@@ -62,6 +62,7 @@ class PaperspaceProvider(BaseProvider):
                 gpu_model=canonical,
                 vram_gb=lookup_vram(canonical),
                 price_per_hour=price,
+                price_unit="per_gpu",  # Paperspace lists /GPU/hr
                 region="US East",
                 contract_type="on-demand",
                 availability=True,
@@ -79,6 +80,7 @@ class PaperspaceProvider(BaseProvider):
                 gpu_model=normalize_gpu_name(r["gpu"]),
                 vram_gb=r["vram"],
                 price_per_hour=r["price"],
+                price_unit="per_gpu",
                 region=r["region"],
                 contract_type="on-demand",
                 availability=True,
