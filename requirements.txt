@@ -1,0 +1,15 @@
+# Runtime dependencies
+anyio==4.12.1
+click==8.1.8
+httpx==0.28.1
+pandas==2.3.3
+plotly==6.7.0
+pydantic==2.13.4
+python-dotenv==1.2.1
+rich==15.0.0
+selectolax==0.4.8
+streamlit==1.50.0
+
+# Development / testing
+pytest==8.4.2
+pytest-asyncio==1.2.0
