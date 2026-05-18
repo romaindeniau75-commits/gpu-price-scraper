@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas · GPU Pricing Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ── Reset & base ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy-900: #060e1f;
+    --navy-800: #0A1628;
+    --navy-700: #0D1B3D;
+    --navy-600: #0F1F3D;
+    --navy-500: #162448;
+    --navy-400: #1e3460;
+    --blue-600: #1d4ed8;
+    --blue-500: #3B82F6;
+    --blue-400: #60A5FA;
+    --blue-300: #93C5FD;
+    --cyan-500: #06B6D4;
+    --cyan-400: #22D3EE;
+    --teal-500: #14B8A6;
+    --violet-500: #8B5CF6;
+    --indigo-500: #6366F1;
+    --slate-400: #94A3B8;
+    --slate-300: #CBD5E1;
+    --slate-200: #E2E8F0;
+    --white: #ffffff;
+    --success: #10B981;
+    --tier-od: #3B82F6;
+    --tier-spot: #06B6D4;
+    --tier-interruptible: #14B8A6;
+    --tier-community: #8B5CF6;
+    --tier-reserved: #6366F1;
+  }
+
+  html { font-size: 14px; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--navy-800);
+    color: var(--white);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ── Background ambience ──────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 900px 600px at 15% 20%, rgba(59,130,246,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 600px 400px at 85% 70%, rgba(99,102,241,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 400px 300px at 50% 50%, rgba(6,182,212,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='0.6' fill='rgba(255,255,255,0.025)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Layout wrapper ───────────────────────────────────────── */
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 0 32px 64px;
+  }
+
+  /* ── Navigation header ────────────────────────────────────── */
+  .navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0 18px;
+    border-bottom: 1px solid rgba(59,130,246,0.12);
+    margin-bottom: 0;
+  }
+  .navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-hex {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+  }
+  .brand-name {
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, var(--white) 0%, var(--blue-300) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .brand-sub {
+    font-size: 0.75rem;
+    color: var(--slate-400);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    margin-left: 2px;
+  }
+  .navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .nav-tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blue-400);
+    border: 1px solid rgba(59,130,246,0.3);
+    padding: 3px 10px;
+    border-radius: 100px;
+    background: rgba(59,130,246,0.08);
+  }
+  .nav-timestamp {
+    font-size: 0.75rem;
+    color: var(--slate-400);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Hero section ─────────────────────────────────────────── */
+  .hero {
+    padding: 48px 0 40px;
+    text-align: center;
+  }
+  .hero-eyebrow {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--blue-400);
+    margin-bottom: 12px;
+  }
+  .hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--white) 0%, var(--blue-300) 60%, var(--cyan-400) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-subtitle {
+    font-size: 1rem;
+    color: var(--slate-400);
+    font-weight: 400;
+    margin-bottom: 40px;
+  }
+
+  /* ── Stats bar ────────────────────────────────────────────── */
+  .stats-bar {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 1px;
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 16px;
+    overflow: hidden;
+    max-width: 860px;
+    margin: 0 auto 52px;
+  }
+  .stat-cell {
+    flex: 1;
+    padding: 20px 24px;
+    background: var(--navy-600);
+    text-align: center;
+    position: relative;
+  }
+  .stat-cell:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 20%; bottom: 20%;
+    width: 1px;
+    background: rgba(59,130,246,0.2);
+  }
+  .stat-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--white);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-value span { color: var(--blue-400); }
+  .stat-label {
+    font-size: 0.72rem;
+    color: var(--slate-400);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+
+  /* ── Section header ───────────────────────────────────────── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(59,130,246,0.4) 0%, transparent 100%);
+  }
+  .section-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--blue-400);
+    white-space: nowrap;
+  }
+  .section-line-right {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(59,130,246,0.4) 100%);
+  }
+
+  /* ── GPU Cards grid ───────────────────────────────────────── */
+  .gpu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 18px;
+    margin-bottom: 52px;
+  }
+  .gpu-card {
+    background: var(--navy-600);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .gpu-card:hover {
+    border-color: rgba(59,130,246,0.45);
+    box-shadow: 0 0 32px rgba(59,130,246,0.12);
+  }
+  .gpu-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(59,130,246,0.6), transparent);
+  }
+
+  /* Card header */
+  .card-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid rgba(59,130,246,0.1);
+    position: relative;
+  }
+  .card-model-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 100px;
+  }
+  .badge-vram {
+    background: rgba(59,130,246,0.12);
+    color: var(--blue-300);
+    border: 1px solid rgba(59,130,246,0.25);
+  }
+  .badge-providers {
+    background: rgba(148,163,184,0.08);
+    color: var(--slate-400);
+    border: 1px solid rgba(148,163,184,0.15);
+  }
+
+  /* Price sub-blocks */
+  .price-blocks {
+    padding: 14px 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .price-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(10,22,40,0.5);
+    border: 1px solid rgba(255,255,255,0.04);
+    position: relative;
+  }
+  .tier-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .tier-dot.od       { background: var(--tier-od); box-shadow: 0 0 6px rgba(59,130,246,0.8); }
+  .tier-dot.spot     { background: var(--tier-spot); box-shadow: 0 0 6px rgba(6,182,212,0.8); }
+  .tier-dot.inter    { background: var(--tier-interruptible); box-shadow: 0 0 6px rgba(20,184,166,0.8); }
+  .tier-dot.comm     { background: var(--tier-community); box-shadow: 0 0 6px rgba(139,92,246,0.8); }
+  .tier-dot.res      { background: var(--tier-reserved); box-shadow: 0 0 6px rgba(99,102,241,0.8); }
+  .tier-dot.empty    { background: rgba(255,255,255,0.12); box-shadow: none; }
+
+  .price-row-info { flex: 1; min-width: 0; }
+  .price-row-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+    margin-bottom: 3px;
+  }
+  .price-row-detail {
+    font-size: 0.72rem;
+    color: var(--slate-400);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .price-row-detail strong {
+    color: var(--slate-300);
+    font-weight: 500;
+  }
+  .price-main {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--white);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .price-main.dim {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.3);
+    font-weight: 400;
+    font-style: italic;
+  }
+  .price-unit {
+    font-size: 0.6rem;
+    color: var(--slate-400);
+    font-weight: 400;
+    vertical-align: super;
+    margin-left: 1px;
+  }
+
+  /* Tier chips */
+  .tier-chip {
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 100px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .tier-chip.od       { background: rgba(59,130,246,0.15); color: var(--blue-400); border: 1px solid rgba(59,130,246,0.3); }
+  .tier-chip.spot     { background: rgba(6,182,212,0.12); color: var(--cyan-400); border: 1px solid rgba(6,182,212,0.3); }
+  .tier-chip.inter    { background: rgba(20,184,166,0.12); color: #2DD4BF; border: 1px solid rgba(20,184,166,0.3); }
+  .tier-chip.comm     { background: rgba(139,92,246,0.12); color: #A78BFA; border: 1px solid rgba(139,92,246,0.3); }
+  .tier-chip.res      { background: rgba(99,102,241,0.12); color: #818CF8; border: 1px solid rgba(99,102,241,0.3); }
+
+  /* Spot discount banner */
+  .discount-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px;
+    background: rgba(6,182,212,0.07);
+    border-top: 1px solid rgba(6,182,212,0.18);
+  }
+  .discount-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+  }
+  .discount-value {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--cyan-400);
+    letter-spacing: -0.02em;
+    text-shadow: 0 0 16px rgba(6,182,212,0.6);
+  }
+
+  /* Median row */
+  .median-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 20px 10px;
+    font-size: 0.68rem;
+    color: var(--slate-400);
+  }
+  .median-val { color: var(--slate-300); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  /* ── Spread leaders ─────────────────────────────────────────── */
+  .spread-section {
+    margin-bottom: 52px;
+  }
+  .spread-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .spread-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    background: var(--navy-600);
+    border: 1px solid rgba(59,130,246,0.15);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .spread-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--cyan-500), var(--blue-500));
+  }
+  .spread-rank {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--slate-400);
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .spread-gpu-name {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--white);
+  }
+  .spread-gpu-sub {
+    font-size: 0.68rem;
+    color: var(--slate-400);
+    font-weight: 400;
+  }
+  .spread-price-group {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-shrink: 0;
+  }
+  .spread-price-item {
+    text-align: right;
+  }
+  .spread-price-label {
+    font-size: 0.62rem;
+    color: var(--slate-400);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+  .spread-price-val {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--white);
+  }
+  .spread-price-val.cyan { color: var(--cyan-400); text-shadow: 0 0 12px rgba(6,182,212,0.5); }
+  .spread-arrow {
+    width: 20px;
+    height: 1px;
+    background: rgba(59,130,246,0.3);
+    position: relative;
+  }
+  .spread-discount-badge {
+    background: rgba(6,182,212,0.12);
+    border: 1px solid rgba(6,182,212,0.3);
+    color: var(--cyan-400);
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 4px 14px;
+    border-radius: 100px;
+    white-space: nowrap;
+    text-shadow: 0 0 12px rgba(6,182,212,0.4);
+  }
+
+  /* ── Tier legend ──────────────────────────────────────────── */
+  .legend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--slate-400);
+  }
+  .legend-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Footer ───────────────────────────────────────────────── */
+  .footer {
+    border-top: 1px solid rgba(59,130,246,0.1);
+    padding-top: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .footer-brand {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--blue-400);
+    letter-spacing: 0.04em;
+  }
+  .footer-sub {
+    font-size: 0.7rem;
+    color: var(--slate-400);
+    margin-top: 2px;
+  }
+  .footer-right {
+    font-size: 0.68rem;
+    color: rgba(148,163,184,0.5);
+    text-align: right;
+  }
+
+  /* ── Hex SVG ──────────────────────────────────────────────── */
+  .hex-decoration {
+    position: absolute;
+    top: 12px; right: 14px;
+    opacity: 0.06;
+    width: 48px; height: 48px;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <svg class="logo-hex" viewBox="0 0 40 46" fill="none">
+        <path d="M20 1L38 11V33L20 43L2 33V11L20 1Z"
+              fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.6)" stroke-width="1.5"/>
+        <path d="M20 9L31 15.5V28.5L20 35L9 28.5V15.5L20 9Z"
+              fill="rgba(59,130,246,0.25)"/>
+        <circle cx="20" cy="22" r="4" fill="#3B82F6"/>
+      </svg>
+      <div>
+        <div class="brand-name">Atlas</div>
+        <div class="brand-sub">GPU Intelligence Platform</div>
+      </div>
+    </div>
+    <div class="navbar-right">
+      <span class="nav-tag">Live Data</span>
+      <span class="nav-timestamp" id="ts-display"></span>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">GPU Pricing Intelligence</div>
+    <h1 class="hero-title">Market-wide GPU Pricing<br>Unified &amp; Normalized</h1>
+    <p class="hero-subtitle" id="hero-subtitle"></p>
+
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat-cell">
+        <div class="stat-value" id="stat-providers"><span>—</span></div>
+        <div class="stat-label">Providers Tracked</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-value" id="stat-offers"><span>—</span></div>
+        <div class="stat-label">Total Observations</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-value" id="stat-models"><span>—</span></div>
+        <div class="stat-label">GPU Models</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-value"><span>5</span></div>
+        <div class="stat-label">Availability Tiers</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tier legend -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#3B82F6;box-shadow:0 0 5px rgba(59,130,246,0.7)"></div>
+      On-Demand
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#06B6D4;box-shadow:0 0 5px rgba(6,182,212,0.7)"></div>
+      Spot
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#14B8A6;box-shadow:0 0 5px rgba(20,184,166,0.7)"></div>
+      Interruptible
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#8B5CF6;box-shadow:0 0 5px rgba(139,92,246,0.7)"></div>
+      Community
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#6366F1;box-shadow:0 0 5px rgba(99,102,241,0.7)"></div>
+      Reserved
+    </div>
+  </div>
+
+  <!-- GPU Cards -->
+  <div class="section-header">
+    <div class="section-line"></div>
+    <div class="section-title">Best Prices by GPU Model</div>
+    <div class="section-line-right"></div>
+  </div>
+
+  <div class="gpu-grid" id="gpu-grid"></div>
+
+  <!-- Market spread leaders -->
+  <div class="spread-section">
+    <div class="section-header">
+      <div class="section-line"></div>
+      <div class="section-title">Market Spread Leaders · Spot vs On-Demand</div>
+      <div class="section-line-right"></div>
+    </div>
+    <div class="spread-cards" id="spread-cards"></div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div>
+      <div class="footer-brand">Atlas Standardization Layer</div>
+      <div class="footer-sub">Données scrapées en direct depuis 9+ fournisseurs cloud GPU</div>
+    </div>
+    <div class="footer-right">
+      Prices in USD/GPU/hr · <span id="footer-ts"></span><br>
+      All prices normalised to per-GPU-hour regardless of instance size
+    </div>
+  </footer>
+
+</div>
+
+<script>
+const DATA = {
+  "generated_at": "2026-05-10T13:23:04.604736+00:00",
+  "ts_display": "May 10, 2026 \u00b7 13:23 UTC",
+  "total_providers": 9,
+  "total_offers": 2296,
+  "total_gpu_models": 12,
+  "gpus": [
+    {
+      "gpu_model": "B200",
+      "label": "NVIDIA B200 SXM",
+      "vram_gb": 192,
+      "provider_count": 4,
+      "offer_count": 28,
+      "on_demand": {
+        "price": 5.49,
+        "provider": "RunPod",
+        "region": "Global",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 0.6253,
+        "provider": "Vast.ai",
+        "region": "Japan",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 5.98,
+      "spot_discount_pct": 88.6
+    },
+    {
+      "gpu_model": "H100 SXM",
+      "label": "NVIDIA H100 SXM",
+      "vram_gb": 80,
+      "provider_count": 7,
+      "offer_count": 54,
+      "on_demand": {
+        "price": 1.99,
+        "provider": "TensorDock",
+        "region": "United States",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 1.0617,
+        "provider": "Vast.ai",
+        "region": "Japan",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 2.69,
+      "spot_discount_pct": 46.6
+    },
+    {
+      "gpu_model": "H100 NVL",
+      "label": "NVIDIA H100 NVL",
+      "vram_gb": 96,
+      "provider_count": 4,
+      "offer_count": 17,
+      "on_demand": {
+        "price": 2.49,
+        "provider": "CoreWeave",
+        "region": "US",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 1.5142,
+        "provider": "Vast.ai",
+        "region": "Arizona",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 2.59,
+      "spot_discount_pct": 39.2
+    },
+    {
+      "gpu_model": "MI300X",
+      "label": "AMD MI300X",
+      "vram_gb": 192,
+      "provider_count": 3,
+      "offer_count": 11,
+      "on_demand": {
+        "price": 0.5,
+        "provider": "RunPod Community",
+        "region": "Global",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": null,
+      "community": null,
+      "reserved": null,
+      "od_median": 1.99,
+      "spot_discount_pct": null
+    },
+    {
+      "gpu_model": "A100 80GB",
+      "label": "NVIDIA A100 80GB",
+      "vram_gb": 80,
+      "provider_count": 6,
+      "offer_count": 35,
+      "on_demand": {
+        "price": 1.19,
+        "provider": "RunPod Community",
+        "region": "Global",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 0.1337,
+        "provider": "Vast.ai",
+        "region": "Italy",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 1.49,
+      "spot_discount_pct": 88.8
+    },
+    {
+      "gpu_model": "A100 40GB SXM",
+      "label": "NVIDIA A100 40GB SXM",
+      "vram_gb": 40,
+      "provider_count": 2,
+      "offer_count": 30,
+      "on_demand": {
+        "price": 1.0,
+        "provider": "RunPod Community",
+        "region": "Global",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 0.7167,
+        "provider": "AWS",
+        "region": "us-east-2",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 2.7447,
+      "spot_discount_pct": 28.3
+    },
+    {
+      "gpu_model": "L40S",
+      "label": "NVIDIA L40S",
+      "vram_gb": 48,
+      "provider_count": 4,
+      "offer_count": 14,
+      "on_demand": {
+        "price": 0.475,
+        "provider": "TensorDock",
+        "region": "United States",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": null,
+      "community": null,
+      "reserved": null,
+      "od_median": 0.79,
+      "spot_discount_pct": null
+    },
+    {
+      "gpu_model": "L4",
+      "label": "NVIDIA L4",
+      "vram_gb": 24,
+      "provider_count": 4,
+      "offer_count": 242,
+      "on_demand": {
+        "price": 0.225,
+        "provider": "TensorDock",
+        "region": "Germany",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 0.1039,
+        "provider": "AWS",
+        "region": "us-east-2",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 2.5552,
+      "spot_discount_pct": 53.8
+    },
+    {
+      "gpu_model": "A40",
+      "label": "NVIDIA A40",
+      "vram_gb": 48,
+      "provider_count": 4,
+      "offer_count": 17,
+      "on_demand": {
+        "price": 0.33,
+        "provider": "TensorDock",
+        "region": "Germany",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": null,
+      "community": null,
+      "reserved": null,
+      "od_median": 0.35,
+      "spot_discount_pct": null
+    },
+    {
+      "gpu_model": "RTX 4090",
+      "label": "GeForce RTX 4090",
+      "vram_gb": 24,
+      "provider_count": 4,
+      "offer_count": 88,
+      "on_demand": {
+        "price": 0.25,
+        "provider": "TensorDock",
+        "region": "Estonia",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 0.1344,
+        "provider": "Vast.ai",
+        "region": "CN",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 0.34,
+      "spot_discount_pct": 46.2
+    },
+    {
+      "gpu_model": "RTX 6000 Ada",
+      "label": "RTX 6000 Ada",
+      "vram_gb": 48,
+      "provider_count": 4,
+      "offer_count": 59,
+      "on_demand": {
+        "price": 0.3,
+        "provider": "TensorDock",
+        "region": "United States",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": null,
+      "community": null,
+      "reserved": null,
+      "od_median": 1.64,
+      "spot_discount_pct": null
+    },
+    {
+      "gpu_model": "V100 16GB",
+      "label": "Tesla V100 16GB",
+      "vram_gb": 16,
+      "provider_count": 7,
+      "offer_count": 160,
+      "on_demand": {
+        "price": 0.19,
+        "provider": "RunPod Community",
+        "region": "Global",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 0.0189,
+        "provider": "Vast.ai",
+        "region": "Washington",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 2.95,
+      "spot_discount_pct": 90.1
+    }
+  ],
+  "spread_leaders": [
+    {
+      "gpu_model": "V100 16GB",
+      "label": "Tesla V100 16GB",
+      "vram_gb": 16,
+      "provider_count": 7,
+      "offer_count": 160,
+      "on_demand": {
+        "price": 0.19,
+        "provider": "RunPod Community",
+        "region": "Global",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 0.0189,
+        "provider": "Vast.ai",
+        "region": "Washington",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 2.95,
+      "spot_discount_pct": 90.1
+    },
+    {
+      "gpu_model": "A100 80GB",
+      "label": "NVIDIA A100 80GB",
+      "vram_gb": 80,
+      "provider_count": 6,
+      "offer_count": 35,
+      "on_demand": {
+        "price": 1.19,
+        "provider": "RunPod Community",
+        "region": "Global",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 0.1337,
+        "provider": "Vast.ai",
+        "region": "Italy",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 1.49,
+      "spot_discount_pct": 88.8
+    },
+    {
+      "gpu_model": "B200",
+      "label": "NVIDIA B200 SXM",
+      "vram_gb": 192,
+      "provider_count": 4,
+      "offer_count": 28,
+      "on_demand": {
+        "price": 5.49,
+        "provider": "RunPod",
+        "region": "Global",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 0.6253,
+        "provider": "Vast.ai",
+        "region": "Japan",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 5.98,
+      "spot_discount_pct": 88.6
+    },
+    {
+      "gpu_model": "L4",
+      "label": "NVIDIA L4",
+      "vram_gb": 24,
+      "provider_count": 4,
+      "offer_count": 242,
+      "on_demand": {
+        "price": 0.225,
+        "provider": "TensorDock",
+        "region": "Germany",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 0.1039,
+        "provider": "AWS",
+        "region": "us-east-2",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 2.5552,
+      "spot_discount_pct": 53.8
+    },
+    {
+      "gpu_model": "H100 SXM",
+      "label": "NVIDIA H100 SXM",
+      "vram_gb": 80,
+      "provider_count": 7,
+      "offer_count": 54,
+      "on_demand": {
+        "price": 1.99,
+        "provider": "TensorDock",
+        "region": "United States",
+        "tier": "on_demand",
+        "commitment_term": null
+      },
+      "spot": {
+        "price": 1.0617,
+        "provider": "Vast.ai",
+        "region": "Japan",
+        "tier": "spot",
+        "commitment_term": null
+      },
+      "community": null,
+      "reserved": null,
+      "od_median": 2.69,
+      "spot_discount_pct": 46.6
+    }
+  ]
+};
+
+// ── Helpers ────────────────────────────────────────────────────
+function fmt(price) {
+  if (price == null) return null;
+  if (price < 1) return '$' + price.toFixed(4);
+  return '$' + price.toFixed(2);
+}
+
+function tierClass(tier) {
+  if (!tier) return 'od';
+  const map = { on_demand:'od', spot:'spot', interruptible:'inter', community:'comm', reserved:'res' };
+  return map[tier] || 'od';
+}
+function tierLabel(tier, term) {
+  const labels = { on_demand:'On-Demand', spot:'Spot', interruptible:'Interruptible', community:'Community', reserved:'Reserved' };
+  let l = labels[tier] || tier;
+  if (tier === 'reserved' && term) l += ' · ' + term.replace('year','yr').replace('years','yr');
+  return l;
+}
+
+function priceRow(tierKey, labelText, tierData, fallbackLabel) {
+  const tc = tierData ? tierClass(tierData.tier) : 'empty';
+  const priceStr = tierData ? fmt(tierData.price) : null;
+  const provider = tierData ? tierData.provider : null;
+  const region   = tierData ? tierData.region : null;
+  const chipLabel = tierData ? tierLabel(tierData.tier, tierData.commitment_term) : null;
+
+  return `
+    <div class="price-row">
+      <div class="tier-dot ${tc}"></div>
+      <div class="price-row-info">
+        <div class="price-row-label">${labelText}</div>
+        ${provider
+          ? `<div class="price-row-detail"><strong>${provider}</strong> · ${region}</div>`
+          : `<div class="price-row-detail" style="font-style:italic">—</div>`}
+      </div>
+      ${chipLabel ? `<span class="tier-chip ${tc}">${chipLabel}</span>` : ''}
+      <div class="price-main ${!tierData ? 'dim' : ''}">${priceStr || '—'}</div>
+    </div>`;
+}
+
+// ── Populate stats ─────────────────────────────────────────────
+document.getElementById('stat-providers').innerHTML = `<span>${DATA.total_providers}</span>`;
+document.getElementById('stat-offers').innerHTML    = `<span>${DATA.total_offers.toLocaleString()}</span>`;
+document.getElementById('stat-models').innerHTML    = `<span>${DATA.total_gpu_models}</span>`;
+document.getElementById('ts-display').textContent   = DATA.ts_display;
+document.getElementById('footer-ts').textContent    = DATA.ts_display;
+document.getElementById('hero-subtitle').textContent =
+  `${DATA.total_providers} providers · ${DATA.total_gpu_models} GPU models · 5 availability tiers · live market data`;
+
+// ── GPU Cards ──────────────────────────────────────────────────
+const grid = document.getElementById('gpu-grid');
+DATA.gpus.forEach(gpu => {
+  const hasSpot = gpu.spot !== null;
+
+  const card = document.createElement('div');
+  card.className = 'gpu-card';
+  card.innerHTML = `
+    <svg class="hex-decoration" viewBox="0 0 60 69" fill="none">
+      <path d="M30 1L59 17V51L30 67L1 51V17L30 1Z" stroke="rgba(59,130,246,1)" stroke-width="2"/>
+      <path d="M30 13L49 24V46L30 57L11 46V24L30 13Z" stroke="rgba(59,130,246,0.6)" stroke-width="1"/>
+    </svg>
+    <div class="card-header">
+      <div class="card-model-name">${gpu.label}</div>
+      <div class="card-meta">
+        <span class="badge badge-vram">${gpu.vram_gb}GB VRAM</span>
+        <span class="badge badge-providers">${gpu.provider_count} providers · ${gpu.offer_count} offers</span>
+      </div>
+    </div>
+    <div class="price-blocks">
+      ${priceRow('od', 'Best On-Demand', gpu.on_demand, 'On-Demand')}
+      ${priceRow('spot', 'Best Spot', gpu.spot, 'Spot')}
+      ${priceRow('res', 'Best Reserved', gpu.reserved, 'Reserved')}
+    </div>
+    ${gpu.od_median != null ? `
+    <div class="median-row">
+      <span>Median on-demand</span>
+      <span class="median-val">${fmt(gpu.od_median)}/hr</span>
+    </div>` : ''}
+    ${hasSpot && gpu.spot_discount_pct != null ? `
+    <div class="discount-banner">
+      <span class="discount-label">Spot discount vs on-demand</span>
+      <span class="discount-value">−${gpu.spot_discount_pct.toFixed(1)}%</span>
+    </div>` : ''}
+  `;
+  grid.appendChild(card);
+});
+
+// ── Spread Leaders ─────────────────────────────────────────────
+const spreadContainer = document.getElementById('spread-cards');
+DATA.spread_leaders.forEach((gpu, i) => {
+  if (!gpu.spot || !gpu.on_demand) return;
+  const div = document.createElement('div');
+  div.className = 'spread-card';
+  div.innerHTML = `
+    <div class="spread-rank">#${i+1}</div>
+    <div>
+      <div class="spread-gpu-name">${gpu.label}</div>
+      <div class="spread-gpu-sub">${gpu.vram_gb}GB · ${gpu.provider_count} providers</div>
+    </div>
+    <div class="spread-price-group">
+      <div class="spread-price-item">
+        <div class="spread-price-label">On-Demand</div>
+        <div class="spread-price-val">${fmt(gpu.on_demand.price)}</div>
+        <div style="font-size:0.6rem;color:var(--slate-400)">${gpu.on_demand.provider}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+        <div style="width:32px;height:1px;background:rgba(6,182,212,0.3)"></div>
+        <div style="font-size:0.55rem;color:var(--cyan-400);font-weight:700">SPOT</div>
+        <div style="width:32px;height:1px;background:rgba(6,182,212,0.3)"></div>
+      </div>
+      <div class="spread-price-item">
+        <div class="spread-price-label">Best Spot</div>
+        <div class="spread-price-val cyan">${fmt(gpu.spot.price)}</div>
+        <div style="font-size:0.6rem;color:var(--slate-400)">${gpu.spot.provider} · ${gpu.spot.region}</div>
+      </div>
+      <div class="spread-discount-badge">−${gpu.spot_discount_pct.toFixed(1)}%</div>
+    </div>
+  `;
+  spreadContainer.appendChild(div);
+});
+</script>
+</body>
+</html>
