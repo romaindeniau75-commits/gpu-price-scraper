@@ -382,3 +382,151 @@ WHERE region_canonical = 'unknown' OR region_canonical IS NULL;
             return con.execute(
                 "SELECT COUNT(*) FROM gpu_price_observations WHERE scrape_success=1"
             ).fetchone()[0]
+
+
+# ---------------------------------------------------------------------------
+# HistoryDatabase — daily price snapshots in data/pricing_history.db
+# ---------------------------------------------------------------------------
+
+_HISTORY_SCHEMA = """
+PRAGMA journal_mode=WAL;
+PRAGMA synchronous=NORMAL;
+
+CREATE TABLE IF NOT EXISTS price_history (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    snapshot_date     TEXT    NOT NULL,          -- ISO-8601 date YYYY-MM-DD
+    provider          TEXT    NOT NULL,
+    gpu_model         TEXT    NOT NULL,
+    region_canonical  TEXT    NOT NULL DEFAULT 'unknown',
+    availability_tier TEXT    NOT NULL DEFAULT 'on_demand',
+    price_per_gpu_hour REAL   NOT NULL,
+    commitment_term   TEXT,
+    UNIQUE (snapshot_date, provider, gpu_model, region_canonical, availability_tier)
+);
+
+CREATE INDEX IF NOT EXISTS idx_hist_gpu_date
+    ON price_history (gpu_model, snapshot_date);
+CREATE INDEX IF NOT EXISTS idx_hist_date
+    ON price_history (snapshot_date);
+CREATE INDEX IF NOT EXISTS idx_hist_provider
+    ON price_history (provider);
+"""
+
+
+class HistoryDatabase:
+    """Stores one best-price row per (date, provider, gpu, region, tier) for time-series analysis."""
+
+    def __init__(self, db_path: str | Path = "./data/pricing_history.db") -> None:
+        self.path = Path(db_path)
+
+    @contextmanager
+    def _conn(self) -> Generator[sqlite3.Connection, None, None]:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        con = sqlite3.connect(str(self.path), timeout=30)
+        con.row_factory = sqlite3.Row
+        try:
+            yield con
+            con.commit()
+        except Exception:
+            con.rollback()
+            raise
+        finally:
+            con.close()
+
+    def init(self) -> None:
+        """Create tables and indexes (idempotent)."""
+        with self._conn() as con:
+            con.executescript(_HISTORY_SCHEMA)
+
+    def save_snapshot(
+        self,
+        offers: Sequence[GPUOffer],
+        snapshot_date: Optional[str] = None,
+    ) -> int:
+        """Upsert one row per (date, provider, gpu, region, tier) keeping the lowest price.
+
+        Parameters
+        ----------
+        offers:        List of GPUOffer from a scrape run.
+        snapshot_date: ISO date string (YYYY-MM-DD). Defaults to today UTC.
+
+        Returns
+        -------
+        Number of rows inserted or replaced.
+        """
+        date = snapshot_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        rows = [
+            (
+                date,
+                o.provider,
+                o.gpu_model,
+                o.region_canonical,
+                o.availability,
+                o.price_per_gpu_hour,
+                o.commitment_term,
+            )
+            for o in offers
+            if o.price_per_gpu_hour > 0 and o.available
+        ]
+
+        if not rows:
+            return 0
+
+        with self._conn() as con:
+            # INSERT OR REPLACE: if a duplicate unique key already exists,
+            # keep the new row only if the new price is lower.
+            con.executemany(
+                """
+                INSERT INTO price_history
+                    (snapshot_date, provider, gpu_model, region_canonical,
+                     availability_tier, price_per_gpu_hour, commitment_term)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (snapshot_date, provider, gpu_model, region_canonical, availability_tier)
+                DO UPDATE SET
+                    price_per_gpu_hour = MIN(price_per_gpu_hour, excluded.price_per_gpu_hour),
+                    commitment_term    = excluded.commitment_term
+                """,
+                rows,
+            )
+
+        return len(rows)
+
+    def get_history(
+        self,
+        gpu_filter: Optional[str] = None,
+        days: int = 30,
+        availability_filter: str = "on_demand",
+    ) -> list[sqlite3.Row]:
+        """Return daily price rows for the last N days."""
+        wheres = [
+            f"snapshot_date >= date('now', '-{days} days')",
+        ]
+        params: list = []
+        if gpu_filter:
+            wheres.append("gpu_model LIKE ?")
+            params.append(f"%{gpu_filter}%")
+        if availability_filter and availability_filter != "all":
+            wheres.append("availability_tier = ?")
+            params.append(availability_filter)
+
+        where_clause = " AND ".join(wheres)
+        sql = f"""
+            SELECT *
+            FROM price_history
+            WHERE {where_clause}
+            ORDER BY snapshot_date ASC, gpu_model, provider
+        """
+        with self._conn() as con:
+            return con.execute(sql, params).fetchall()
+
+    def get_latest_snapshot_date(self) -> Optional[str]:
+        with self._conn() as con:
+            row = con.execute(
+                "SELECT MAX(snapshot_date) FROM price_history"
+            ).fetchone()
+            return row[0] if row else None
+
+    def row_count(self) -> int:
+        with self._conn() as con:
+            return con.execute("SELECT COUNT(*) FROM price_history").fetchone()[0]

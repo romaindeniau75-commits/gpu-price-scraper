@@ -2,11 +2,12 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
-data/
+data/*
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
+!data/pricing_history.db
 .venv/
 venv/
 *.egg-info/

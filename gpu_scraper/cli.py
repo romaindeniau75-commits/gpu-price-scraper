@@ -208,8 +208,9 @@ def _save_to_db(
     db_path: str,
     offers: list[GPUOffer],
     errors: dict[str, str],
+    history_db_path: Optional[str] = None,
 ) -> None:
-    from .storage import PriceDatabase
+    from .storage import HistoryDatabase, PriceDatabase
 
     db = PriceDatabase(db_path)
     db.init()
@@ -220,6 +221,15 @@ def _save_to_db(
     console.print(
         f"[green]✓ Saved {count:,} observations[/green] → {Path(db_path).resolve()}"
         f"  [dim](run {run_id[:8]})[/dim]"
+    )
+
+    # Persist daily snapshot for time-series / GitHub Pages dashboard
+    hist_path = history_db_path or str(Path(db_path).parent / "pricing_history.db")
+    hdb = HistoryDatabase(hist_path)
+    hdb.init()
+    snap_count = hdb.save_snapshot(offers)
+    console.print(
+        f"[green]✓ Snapshot:[/green] {snap_count:,} rows → {Path(hist_path).resolve()}"
     )
 
 
