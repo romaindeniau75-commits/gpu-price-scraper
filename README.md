@@ -1,6 +1,9 @@
 # Atlas GPU Price Scraper
 
-Real-time H100 / A100 cloud GPU pricing across 14 providers, with persistent storage, arbitrage analytics, and a Streamlit dashboard.
+[![Daily Scrape](https://github.com/romaindeniau75-commits/gpu-price-scraper/actions/workflows/scrape-daily.yml/badge.svg)](https://github.com/romaindeniau75-commits/gpu-price-scraper/actions/workflows/scrape-daily.yml)
+[![Dashboard](https://img.shields.io/badge/dashboard-live-3B82F6?logo=github)](https://romaindeniau75-commits.github.io/gpu-price-scraper/)
+
+Real-time H100 / A100 cloud GPU pricing across 14 providers, with persistent storage, arbitrage analytics, a Streamlit dashboard, and a **[live GitHub Pages dashboard](https://romaindeniau75-commits.github.io/gpu-price-scraper/)** updated daily via GitHub Actions.
 
 ---
 

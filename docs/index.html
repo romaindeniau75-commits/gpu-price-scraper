@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atlas GPU Pricing Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #0A1628;
+      --card-bg:   #0F1E35;
+      --border:    #1E2D45;
+      --accent:    #3B82F6;
+      --accent-lo: rgba(59,130,246,.12);
+      --text:      #E2E8F0;
+      --muted:     #64748B;
+      --green:     #10B981;
+      --red:       #EF4444;
+      --amber:     #F59E0B;
+      --glow:      0 0 20px rgba(59,130,246,.25);
+    }
+    html { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; }
+    a { color: var(--accent); text-decoration: none; }
+
+    /* ── Layout ────────────────────────────────────────────────────────── */
+    .page { max-width: 1400px; margin: 0 auto; padding: 32px 20px 64px; }
+
+    /* ── Header ────────────────────────────────────────────────────────── */
+    .site-header {
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 32px;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: var(--glow); }
+    .logo-text { font-size: 1.3rem; font-weight: 700; letter-spacing: -.5px; }
+    .logo-sub { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+    .header-meta { text-align: right; font-size: .8rem; color: var(--muted); line-height: 1.6; }
+    .header-meta strong { color: var(--text); }
+
+    /* ── Stat pills ────────────────────────────────────────────────────── */
+    .stat-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 32px; }
+    .stat-pill {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 20px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+    .stat-label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+
+    /* ── Section titles ────────────────────────────────────────────────── */
+    .section-title {
+      font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── GPU sparkline cards ───────────────────────────────────────────── */
+    .gpu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .gpu-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 18px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .gpu-card:hover { border-color: var(--accent); box-shadow: var(--glow); }
+    .card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+    .gpu-name { font-weight: 700; font-size: .95rem; }
+    .gpu-price { font-size: 1.05rem; font-weight: 700; color: var(--accent); }
+    .card-sub { font-size: .75rem; color: var(--muted); margin-bottom: 10px; }
+    .trend-up   { color: var(--red); }
+    .trend-down { color: var(--green); }
+    .trend-flat { color: var(--muted); }
+    .sparkline-canvas { width: 100% !important; display: block; }
+
+    /* ── Latest prices table ───────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin-bottom: 40px; }
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    thead tr { border-bottom: 2px solid var(--border); }
+    th { text-align: left; padding: 10px 14px; color: var(--muted); font-weight: 600;
+          font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+    tbody tr:hover { background: var(--accent-lo); }
+    td { padding: 10px 14px; }
+    .gpu-cell { font-weight: 600; color: var(--text); }
+    .count-cell { color: var(--muted); text-align: right; }
+
+    /* ── Biggest movers ────────────────────────────────────────────────── */
+    .movers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+    .mover-item {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .mover-gpu { font-weight: 700; font-size: .9rem; }
+    .mover-prices { font-size: .78rem; color: var(--muted); }
+    .mover-up   { color: var(--red);   font-weight: 700; font-size: .95rem; }
+    .mover-down { color: var(--green); font-weight: 700; font-size: .95rem; }
+    .mover-flat { color: var(--muted); font-weight: 700; font-size: .95rem; }
+
+    .empty-msg { color: var(--muted); font-style: italic; margin-bottom: 24px; }
+
+    /* ── Footer ────────────────────────────────────────────────────────── */
+    .site-footer {
+      border-top: 1px solid var(--border); padding-top: 24px;
+      font-size: .78rem; color: var(--muted); text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <div>
+        <div class="logo-text">Atlas GPU Pricing</div>
+        <div class="logo-sub">H100 · A100 · L4 · A10G across 14 providers</div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <strong>Latest snapshot:</strong> 2026-05-10<br>
+      Updated <span id="rel-time">2026-05-18T16:32:07.908025+00:00</span>
+    </div>
+  </header>
+
+  <!-- Stat pills -->
+  <div class="stat-row">
+    <div class="stat-pill"><span class="stat-value">63</span><span class="stat-label">GPU Models</span></div>
+    <div class="stat-pill"><span class="stat-value">9</span><span class="stat-label">Providers</span></div>
+    <div class="stat-pill"><span class="stat-value">1</span><span class="stat-label">Days of History</span></div>
+    <div class="stat-pill"><span class="stat-value">199</span><span class="stat-label">Price Rows</span></div>
+  </div>
+
+  <!-- Sparklines -->
+  <h2 class="section-title">30-Day Price Evolution (on-demand min $/hr)</h2>
+  <div class="gpu-grid">
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [2.0]}' data-canvas="chart_A10" data-color="#3B82F6">
+      <div class="card-header">
+        <span class="gpu-name">A10</span>
+        <span class="gpu-price">$2.0000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $2.0000 – $2.0000</span>
+      </div>
+      <canvas id="chart_A10" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [1.65]}' data-canvas="chart_A100_40GB" data-color="#10B981">
+      <div class="card-header">
+        <span class="gpu-name">A100 40GB</span>
+        <span class="gpu-price">$1.6500/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $1.6500 – $1.6500</span>
+      </div>
+      <canvas id="chart_A100_40GB" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.6]}' data-canvas="chart_A100_40GB_PCIe" data-color="#F59E0B">
+      <div class="card-header">
+        <span class="gpu-name">A100 40GB PCIe</span>
+        <span class="gpu-price">$0.6000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.6000 – $0.6000</span>
+      </div>
+      <canvas id="chart_A100_40GB_PCIe" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [1.0]}' data-canvas="chart_A100_40GB_SXM" data-color="#EF4444">
+      <div class="card-header">
+        <span class="gpu-name">A100 40GB SXM</span>
+        <span class="gpu-price">$1.0000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $1.0000 – $1.0000</span>
+      </div>
+      <canvas id="chart_A100_40GB_SXM" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [1.19]}' data-canvas="chart_A100_80GB" data-color="#8B5CF6">
+      <div class="card-header">
+        <span class="gpu-name">A100 80GB</span>
+        <span class="gpu-price">$1.1900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $1.1900 – $1.1900</span>
+      </div>
+      <canvas id="chart_A100_80GB" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [1.25]}' data-canvas="chart_A100_80GB_PCIe" data-color="#EC4899">
+      <div class="card-header">
+        <span class="gpu-name">A100 80GB PCIe</span>
+        <span class="gpu-price">$1.2500/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $1.2500 – $1.2500</span>
+      </div>
+      <canvas id="chart_A100_80GB_PCIe" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.85]}' data-canvas="chart_A100_80GB_SXM" data-color="#06B6D4">
+      <div class="card-header">
+        <span class="gpu-name">A100 80GB SXM</span>
+        <span class="gpu-price">$0.8500/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.8500 – $0.8500</span>
+      </div>
+      <canvas id="chart_A100_80GB_SXM" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [1.006]}' data-canvas="chart_A10G" data-color="#F97316">
+      <div class="card-header">
+        <span class="gpu-name">A10G</span>
+        <span class="gpu-price">$1.0060/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $1.0060 – $1.0060</span>
+      </div>
+      <canvas id="chart_A10G" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.33]}' data-canvas="chart_A40" data-color="#84CC16">
+      <div class="card-header">
+        <span class="gpu-name">A40</span>
+        <span class="gpu-price">$0.3300/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.3300 – $0.3300</span>
+      </div>
+      <canvas id="chart_A40" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.33]}' data-canvas="chart_A6000" data-color="#6366F1">
+      <div class="card-header">
+        <span class="gpu-name">A6000</span>
+        <span class="gpu-price">$0.3300/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.3300 – $0.3300</span>
+      </div>
+      <canvas id="chart_A6000" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [5.49]}' data-canvas="chart_B200" data-color="#14B8A6">
+      <div class="card-header">
+        <span class="gpu-name">B200</span>
+        <span class="gpu-price">$5.4900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $5.4900 – $5.4900</span>
+      </div>
+      <canvas id="chart_B200" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [6.94]}' data-canvas="chart_B300" data-color="#E879F9">
+      <div class="card-header">
+        <span class="gpu-name">B300</span>
+        <span class="gpu-price">$6.9400/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $6.9400 – $6.9400</span>
+      </div>
+      <canvas id="chart_B300" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [2.49]}' data-canvas="chart_H100_NVL" data-color="#3B82F6">
+      <div class="card-header">
+        <span class="gpu-name">H100 NVL</span>
+        <span class="gpu-price">$2.4900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $2.4900 – $2.4900</span>
+      </div>
+      <canvas id="chart_H100_NVL" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [1.99]}' data-canvas="chart_H100_PCIe" data-color="#10B981">
+      <div class="card-header">
+        <span class="gpu-name">H100 PCIe</span>
+        <span class="gpu-price">$1.9900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $1.9900 – $1.9900</span>
+      </div>
+      <canvas id="chart_H100_PCIe" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [1.99]}' data-canvas="chart_H100_SXM" data-color="#F59E0B">
+      <div class="card-header">
+        <span class="gpu-name">H100 SXM</span>
+        <span class="gpu-price">$1.9900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $1.9900 – $1.9900</span>
+      </div>
+      <canvas id="chart_H100_SXM" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [10.0]}' data-canvas="chart_H200" data-color="#EF4444">
+      <div class="card-header">
+        <span class="gpu-name">H200</span>
+        <span class="gpu-price">$10.0000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $10.0000 – $10.0000</span>
+      </div>
+      <canvas id="chart_H200" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [3.59]}' data-canvas="chart_H200_SXM" data-color="#8B5CF6">
+      <div class="card-header">
+        <span class="gpu-name">H200 SXM</span>
+        <span class="gpu-price">$3.5900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $3.5900 – $3.5900</span>
+      </div>
+      <canvas id="chart_H200_SXM" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.225]}' data-canvas="chart_L4" data-color="#EC4899">
+      <div class="card-header">
+        <span class="gpu-name">L4</span>
+        <span class="gpu-price">$0.2250/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.2250 – $0.2250</span>
+      </div>
+      <canvas id="chart_L4" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.69]}' data-canvas="chart_L40" data-color="#06B6D4">
+      <div class="card-header">
+        <span class="gpu-name">L40</span>
+        <span class="gpu-price">$0.6900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.6900 – $0.6900</span>
+      </div>
+      <canvas id="chart_L40" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.475]}' data-canvas="chart_L40S" data-color="#F97316">
+      <div class="card-header">
+        <span class="gpu-name">L40S</span>
+        <span class="gpu-price">$0.4750/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.4750 – $0.4750</span>
+      </div>
+      <canvas id="chart_L40S" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.5]}' data-canvas="chart_MI300X" data-color="#84CC16">
+      <div class="card-header">
+        <span class="gpu-name">MI300X</span>
+        <span class="gpu-price">$0.5000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.5000 – $0.5000</span>
+      </div>
+      <canvas id="chart_MI300X" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [8.6]}' data-canvas="chart_MI355X" data-color="#6366F1">
+      <div class="card-header">
+        <span class="gpu-name">MI355X</span>
+        <span class="gpu-price">$8.6000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $8.6000 – $8.6000</span>
+      </div>
+      <canvas id="chart_MI355X" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.5]}' data-canvas="chart_NVIDIA_H200_NVL" data-color="#14B8A6">
+      <div class="card-header">
+        <span class="gpu-name">NVIDIA H200 NVL</span>
+        <span class="gpu-price">$0.5000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.5000 – $0.5000</span>
+      </div>
+      <canvas id="chart_NVIDIA_H200_NVL" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.6]}' data-canvas="chart_NVIDIA_P4" data-color="#E879F9">
+      <div class="card-header">
+        <span class="gpu-name">NVIDIA P4</span>
+        <span class="gpu-price">$0.6000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.6000 – $0.6000</span>
+      </div>
+      <canvas id="chart_NVIDIA_P4" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.8]}' data-canvas="chart_NVIDIA_P4_Virtual_Workstation" data-color="#3B82F6">
+      <div class="card-header">
+        <span class="gpu-name">NVIDIA P4 Virtual Workstation</span>
+        <span class="gpu-price">$0.8000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.8000 – $0.8000</span>
+      </div>
+      <canvas id="chart_NVIDIA_P4_Virtual_Workstation" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [1.275]}' data-canvas="chart_P100" data-color="#10B981">
+      <div class="card-header">
+        <span class="gpu-name">P100</span>
+        <span class="gpu-price">$1.2750/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $1.2750 – $1.2750</span>
+      </div>
+      <canvas id="chart_P100" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.51]}' data-canvas="chart_P4000" data-color="#F59E0B">
+      <div class="card-header">
+        <span class="gpu-name">P4000</span>
+        <span class="gpu-price">$0.5100/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.5100 – $0.5100</span>
+      </div>
+      <canvas id="chart_P4000" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.78]}' data-canvas="chart_P5000" data-color="#EF4444">
+      <div class="card-header">
+        <span class="gpu-name">P5000</span>
+        <span class="gpu-price">$0.7800/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.7800 – $0.7800</span>
+      </div>
+      <canvas id="chart_P5000" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.49]}' data-canvas="chart_PRO_6000_MIG_24GB" data-color="#8B5CF6">
+      <div class="card-header">
+        <span class="gpu-name">PRO 6000 MIG 24GB</span>
+        <span class="gpu-price">$0.4900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.4900 – $0.4900</span>
+      </div>
+      <canvas id="chart_PRO_6000_MIG_24GB" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [1.0]}' data-canvas="chart_PRO_6000_MIG_48GB" data-color="#EC4899">
+      <div class="card-header">
+        <span class="gpu-name">PRO 6000 MIG 48GB</span>
+        <span class="gpu-price">$1.0000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $1.0000 – $1.0000</span>
+      </div>
+      <canvas id="chart_PRO_6000_MIG_48GB" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.24]}' data-canvas="chart_RTX_2000_Ada" data-color="#06B6D4">
+      <div class="card-header">
+        <span class="gpu-name">RTX 2000 Ada</span>
+        <span class="gpu-price">$0.2400/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.2400 – $0.2400</span>
+      </div>
+      <canvas id="chart_RTX_2000_Ada" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.13]}' data-canvas="chart_RTX_3070" data-color="#F97316">
+      <div class="card-header">
+        <span class="gpu-name">RTX 3070</span>
+        <span class="gpu-price">$0.1300/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1300 – $0.1300</span>
+      </div>
+      <canvas id="chart_RTX_3070" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.1]}' data-canvas="chart_RTX_3080" data-color="#84CC16">
+      <div class="card-header">
+        <span class="gpu-name">RTX 3080</span>
+        <span class="gpu-price">$0.1000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1000 – $0.1000</span>
+      </div>
+      <canvas id="chart_RTX_3080" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.15]}' data-canvas="chart_RTX_3090" data-color="#6366F1">
+      <div class="card-header">
+        <span class="gpu-name">RTX 3090</span>
+        <span class="gpu-price">$0.1500/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1500 – $0.1500</span>
+      </div>
+      <canvas id="chart_RTX_3090" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.2]}' data-canvas="chart_RTX_4000_Ada" data-color="#14B8A6">
+      <div class="card-header">
+        <span class="gpu-name">RTX 4000 Ada</span>
+        <span class="gpu-price">$0.2000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.2000 – $0.2000</span>
+      </div>
+      <canvas id="chart_RTX_4000_Ada" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.18]}' data-canvas="chart_RTX_4000_Ada_SFF" data-color="#E879F9">
+      <div class="card-header">
+        <span class="gpu-name">RTX 4000 Ada SFF</span>
+        <span class="gpu-price">$0.1800/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1800 – $0.1800</span>
+      </div>
+      <canvas id="chart_RTX_4000_Ada_SFF" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.19]}' data-canvas="chart_RTX_4070_Ti" data-color="#3B82F6">
+      <div class="card-header">
+        <span class="gpu-name">RTX 4070 Ti</span>
+        <span class="gpu-price">$0.1900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1900 – $0.1900</span>
+      </div>
+      <canvas id="chart_RTX_4070_Ti" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.14]}' data-canvas="chart_RTX_4080" data-color="#10B981">
+      <div class="card-header">
+        <span class="gpu-name">RTX 4080</span>
+        <span class="gpu-price">$0.1400/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1400 – $0.1400</span>
+      </div>
+      <canvas id="chart_RTX_4080" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.25]}' data-canvas="chart_RTX_4090" data-color="#F59E0B">
+      <div class="card-header">
+        <span class="gpu-name">RTX 4090</span>
+        <span class="gpu-price">$0.2500/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.2500 – $0.2500</span>
+      </div>
+      <canvas id="chart_RTX_4090" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.49]}' data-canvas="chart_RTX_5000_Ada" data-color="#EF4444">
+      <div class="card-header">
+        <span class="gpu-name">RTX 5000 Ada</span>
+        <span class="gpu-price">$0.4900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.4900 – $0.4900</span>
+      </div>
+      <canvas id="chart_RTX_5000_Ada" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.39]}' data-canvas="chart_RTX_5080" data-color="#8B5CF6">
+      <div class="card-header">
+        <span class="gpu-name">RTX 5080</span>
+        <span class="gpu-price">$0.3900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.3900 – $0.3900</span>
+      </div>
+      <canvas id="chart_RTX_5080" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.69]}' data-canvas="chart_RTX_5090" data-color="#EC4899">
+      <div class="card-header">
+        <span class="gpu-name">RTX 5090</span>
+        <span class="gpu-price">$0.6900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.6900 – $0.6900</span>
+      </div>
+      <canvas id="chart_RTX_5090" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.3]}' data-canvas="chart_RTX_6000_Ada" data-color="#06B6D4">
+      <div class="card-header">
+        <span class="gpu-name">RTX 6000 Ada</span>
+        <span class="gpu-price">$0.3000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.3000 – $0.3000</span>
+      </div>
+      <canvas id="chart_RTX_6000_Ada" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.12]}' data-canvas="chart_RTX_A2000" data-color="#F97316">
+      <div class="card-header">
+        <span class="gpu-name">RTX A2000</span>
+        <span class="gpu-price">$0.1200/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1200 – $0.1200</span>
+      </div>
+      <canvas id="chart_RTX_A2000" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.17]}' data-canvas="chart_RTX_A4000" data-color="#84CC16">
+      <div class="card-header">
+        <span class="gpu-name">RTX A4000</span>
+        <span class="gpu-price">$0.1700/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1700 – $0.1700</span>
+      </div>
+      <canvas id="chart_RTX_A4000" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.19]}' data-canvas="chart_RTX_A4500" data-color="#6366F1">
+      <div class="card-header">
+        <span class="gpu-name">RTX A4500</span>
+        <span class="gpu-price">$0.1900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1900 – $0.1900</span>
+      </div>
+      <canvas id="chart_RTX_A4500" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.16]}' data-canvas="chart_RTX_A5000" data-color="#14B8A6">
+      <div class="card-header">
+        <span class="gpu-name">RTX A5000</span>
+        <span class="gpu-price">$0.1600/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1600 – $0.1600</span>
+      </div>
+      <canvas id="chart_RTX_A5000" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.34]}' data-canvas="chart_RTX_PRO_4500" data-color="#E879F9">
+      <div class="card-header">
+        <span class="gpu-name">RTX PRO 4500</span>
+        <span class="gpu-price">$0.3400/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.3400 – $0.3400</span>
+      </div>
+      <canvas id="chart_RTX_PRO_4500" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.51]}' data-canvas="chart_RTX4000" data-color="#3B82F6">
+      <div class="card-header">
+        <span class="gpu-name">RTX4000</span>
+        <span class="gpu-price">$0.5100/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.5100 – $0.5100</span>
+      </div>
+      <canvas id="chart_RTX4000" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.35]}' data-canvas="chart_T4" data-color="#10B981">
+      <div class="card-header">
+        <span class="gpu-name">T4</span>
+        <span class="gpu-price">$0.3500/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.3500 – $0.3500</span>
+      </div>
+      <canvas id="chart_T4" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.19]}' data-canvas="chart_V100_16GB" data-color="#F59E0B">
+      <div class="card-header">
+        <span class="gpu-name">V100 16GB</span>
+        <span class="gpu-price">$0.1900/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1900 – $0.1900</span>
+      </div>
+      <canvas id="chart_V100_16GB" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [2.3]}' data-canvas="chart_V100_32GB" data-color="#EF4444">
+      <div class="card-header">
+        <span class="gpu-name">V100 32GB</span>
+        <span class="gpu-price">$2.3000/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $2.3000 – $2.3000</span>
+      </div>
+      <canvas id="chart_V100_32GB" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [7.824]}' data-canvas="chart_g4dn.metal" data-color="#8B5CF6">
+      <div class="card-header">
+        <span class="gpu-name">g4dn.metal</span>
+        <span class="gpu-price">$7.8240/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $7.8240 – $7.8240</span>
+      </div>
+      <canvas id="chart_g4dn.metal" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.9776]}' data-canvas="chart_g6.2xlarge" data-color="#EC4899">
+      <div class="card-header">
+        <span class="gpu-name">g6.2xlarge</span>
+        <span class="gpu-price">$0.9776/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.9776 – $0.9776</span>
+      </div>
+      <canvas id="chart_g6.2xlarge" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.144]}' data-canvas="chart_geforcertx2060super_pcie_8gb" data-color="#06B6D4">
+      <div class="card-header">
+        <span class="gpu-name">geforcertx2060super pcie 8gb</span>
+        <span class="gpu-price">$0.1440/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1440 – $0.1440</span>
+      </div>
+      <canvas id="chart_geforcertx2060super_pcie_8gb" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.12]}' data-canvas="chart_geforcertx3070ti_pcie_8gb" data-color="#F97316">
+      <div class="card-header">
+        <span class="gpu-name">geforcertx3070ti pcie 8gb</span>
+        <span class="gpu-price">$0.1200/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.1200 – $0.1200</span>
+      </div>
+      <canvas id="chart_geforcertx3070ti_pcie_8gb" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.46]}' data-canvas="chart_geforcertx5090_pcie_32gb" data-color="#84CC16">
+      <div class="card-header">
+        <span class="gpu-name">geforcertx5090 pcie 32gb</span>
+        <span class="gpu-price">$0.4600/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.4600 – $0.4600</span>
+      </div>
+      <canvas id="chart_geforcertx5090_pcie_32gb" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [6.88]}' data-canvas="chart_p5.4xlarge" data-color="#6366F1">
+      <div class="card-header">
+        <span class="gpu-name">p5.4xlarge</span>
+        <span class="gpu-price">$6.8800/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $6.8800 – $6.8800</span>
+      </div>
+      <canvas id="chart_p5.4xlarge" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.55]}' data-canvas="chart_rtx5000ada_pcie_32gb" data-color="#14B8A6">
+      <div class="card-header">
+        <span class="gpu-name">rtx5000ada pcie 32gb</span>
+        <span class="gpu-price">$0.5500/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.5500 – $0.5500</span>
+      </div>
+      <canvas id="chart_rtx5000ada_pcie_32gb" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.07]}' data-canvas="chart_rtxa4000_pcie_16gb" data-color="#E879F9">
+      <div class="card-header">
+        <span class="gpu-name">rtxa4000 pcie 16gb</span>
+        <span class="gpu-price">$0.0700/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.0700 – $0.0700</span>
+      </div>
+      <canvas id="chart_rtxa4000_pcie_16gb" class="sparkline-canvas" height="60"></canvas>
+    </div>
+
+    <div class="gpu-card" data-series='{"labels": ["2026-05-10"], "data": [0.21]}' data-canvas="chart_rtxa5000_pcie_24gb" data-color="#3B82F6">
+      <div class="card-header">
+        <span class="gpu-name">rtxa5000 pcie 24gb</span>
+        <span class="gpu-price">$0.2100/hr</span>
+      </div>
+      <div class="card-sub">
+        <span class="trend-flat">— 1-day range:
+          $0.2100 – $0.2100</span>
+      </div>
+      <canvas id="chart_rtxa5000_pcie_24gb" class="sparkline-canvas" height="60"></canvas>
+    </div>
+  </div>
+
+  <!-- Latest prices -->
+  <h2 class="section-title">Latest On-Demand Prices</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>GPU Model</th>
+          <th>Best Price ($/hr)</th>
+          <th>Best Provider</th>
+          <th>Region</th>
+          <th style="text-align:right">Offers</th>
+        </tr>
+      </thead>
+      <tbody>
+    <tr>
+      <td class="gpu-cell">A10</td>
+      <td>$2.0000</td>
+      <td>OCI</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">A100 40GB</td>
+      <td>$1.6500</td>
+      <td>CoreWeave</td>
+      <td>us-east</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">A100 40GB PCIe</td>
+      <td>$0.6000</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">A100 40GB SXM</td>
+      <td>$1.0000</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">A100 80GB</td>
+      <td>$1.1900</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">5</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">A100 80GB PCIe</td>
+      <td>$1.2500</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">A100 80GB SXM</td>
+      <td>$0.8500</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">A10G</td>
+      <td>$1.0060</td>
+      <td>AWS</td>
+      <td>us-east</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">A40</td>
+      <td>$0.3300</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">4</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">A6000</td>
+      <td>$0.3300</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">5</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">B200</td>
+      <td>$5.4900</td>
+      <td>RunPod</td>
+      <td>global</td>
+      <td class="count-cell">3</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">B300</td>
+      <td>$6.9400</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">3</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">H100 NVL</td>
+      <td>$2.4900</td>
+      <td>CoreWeave</td>
+      <td>us-east</td>
+      <td class="count-cell">3</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">H100 PCIe</td>
+      <td>$1.9900</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">H100 SXM</td>
+      <td>$1.9900</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">6</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">H200</td>
+      <td>$10.0000</td>
+      <td>OCI</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">H200 SXM</td>
+      <td>$3.5900</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">L4</td>
+      <td>$0.2250</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">4</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">L40</td>
+      <td>$0.6900</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">L40S</td>
+      <td>$0.4750</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">4</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">MI300X</td>
+      <td>$0.5000</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">3</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">MI355X</td>
+      <td>$8.6000</td>
+      <td>OCI</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">NVIDIA H200 NVL</td>
+      <td>$0.5000</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">NVIDIA P4</td>
+      <td>$0.6000</td>
+      <td>GCP</td>
+      <td>us-central</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">NVIDIA P4 Virtual Workstation</td>
+      <td>$0.8000</td>
+      <td>GCP</td>
+      <td>us-central</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">P100</td>
+      <td>$1.2750</td>
+      <td>OCI</td>
+      <td>unknown</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">P4000</td>
+      <td>$0.5100</td>
+      <td>Paperspace</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">P5000</td>
+      <td>$0.7800</td>
+      <td>Paperspace</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">PRO 6000 MIG 24GB</td>
+      <td>$0.4900</td>
+      <td>RunPod</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">PRO 6000 MIG 48GB</td>
+      <td>$1.0000</td>
+      <td>RunPod</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 2000 Ada</td>
+      <td>$0.2400</td>
+      <td>RunPod</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 3070</td>
+      <td>$0.1300</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 3080</td>
+      <td>$0.1000</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 3090</td>
+      <td>$0.1500</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">3</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 4000 Ada</td>
+      <td>$0.2000</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 4000 Ada SFF</td>
+      <td>$0.1800</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 4070 Ti</td>
+      <td>$0.1900</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 4080</td>
+      <td>$0.1400</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">3</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 4090</td>
+      <td>$0.2500</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">3</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 5000 Ada</td>
+      <td>$0.4900</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 5080</td>
+      <td>$0.3900</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 5090</td>
+      <td>$0.6900</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX 6000 Ada</td>
+      <td>$0.3000</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">3</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX A2000</td>
+      <td>$0.1200</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX A4000</td>
+      <td>$0.1700</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX A4500</td>
+      <td>$0.1900</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX A5000</td>
+      <td>$0.1600</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">3</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX PRO 4500</td>
+      <td>$0.3400</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">RTX4000</td>
+      <td>$0.5100</td>
+      <td>Paperspace</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">T4</td>
+      <td>$0.3500</td>
+      <td>GCP</td>
+      <td>us-central</td>
+      <td class="count-cell">2</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">V100 16GB</td>
+      <td>$0.1900</td>
+      <td>RunPod Community</td>
+      <td>global</td>
+      <td class="count-cell">6</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">V100 32GB</td>
+      <td>$2.3000</td>
+      <td>Paperspace</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">g4dn.metal</td>
+      <td>$7.8240</td>
+      <td>AWS</td>
+      <td>us-east</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">g6.2xlarge</td>
+      <td>$0.9776</td>
+      <td>AWS</td>
+      <td>us-east</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">geforcertx2060super pcie 8gb</td>
+      <td>$0.1440</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">geforcertx3070ti pcie 8gb</td>
+      <td>$0.1200</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">geforcertx5090 pcie 32gb</td>
+      <td>$0.4600</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">p5.4xlarge</td>
+      <td>$6.8800</td>
+      <td>AWS</td>
+      <td>us-east</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">rtx5000ada pcie 32gb</td>
+      <td>$0.5500</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">rtxa4000 pcie 16gb</td>
+      <td>$0.0700</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+    <tr>
+      <td class="gpu-cell">rtxa5000 pcie 24gb</td>
+      <td>$0.2100</td>
+      <td>TensorDock</td>
+      <td>unknown</td>
+      <td class="count-cell">1</td>
+    </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Biggest movers -->
+  <h2 class="section-title">Biggest Movers — Last 7 Days</h2>
+  <div class="movers-grid">
+<p class="empty-msg">Need ≥ 8 days of history for mover analysis.</p>
+  </div>
+
+  <footer class="site-footer">
+    Data collected automatically every day at 06:00 UTC via
+    <a href="https://github.com/actions">GitHub Actions</a>.
+    Prices are on-demand, per-GPU, in USD.
+    Source: <a href="https://github.com/">github.com/...</a>
+  </footer>
+
+</div>
+
+<script>
+/* ── Inline data ─────────────────────────────────────────────────────────── */
+const DASHBOARD_DATA = {"generated_at": "2026-05-18T16:32:07.908025+00:00", "latest_snapshot_date": "2026-05-10", "stats": {"gpu_count": 63, "provider_count": 9, "day_count": 1, "total_rows": 199}, "sparklines": {"A10": {"dates": ["2026-05-10"], "prices": [2.0]}, "A100 40GB": {"dates": ["2026-05-10"], "prices": [1.65]}, "A100 40GB PCIe": {"dates": ["2026-05-10"], "prices": [0.6]}, "A100 40GB SXM": {"dates": ["2026-05-10"], "prices": [1.0]}, "A100 80GB": {"dates": ["2026-05-10"], "prices": [1.19]}, "A100 80GB PCIe": {"dates": ["2026-05-10"], "prices": [1.25]}, "A100 80GB SXM": {"dates": ["2026-05-10"], "prices": [0.85]}, "A10G": {"dates": ["2026-05-10"], "prices": [1.006]}, "A40": {"dates": ["2026-05-10"], "prices": [0.33]}, "A6000": {"dates": ["2026-05-10"], "prices": [0.33]}, "B200": {"dates": ["2026-05-10"], "prices": [5.49]}, "B300": {"dates": ["2026-05-10"], "prices": [6.94]}, "H100 NVL": {"dates": ["2026-05-10"], "prices": [2.49]}, "H100 PCIe": {"dates": ["2026-05-10"], "prices": [1.99]}, "H100 SXM": {"dates": ["2026-05-10"], "prices": [1.99]}, "H200": {"dates": ["2026-05-10"], "prices": [10.0]}, "H200 SXM": {"dates": ["2026-05-10"], "prices": [3.59]}, "L4": {"dates": ["2026-05-10"], "prices": [0.225]}, "L40": {"dates": ["2026-05-10"], "prices": [0.69]}, "L40S": {"dates": ["2026-05-10"], "prices": [0.475]}, "MI300X": {"dates": ["2026-05-10"], "prices": [0.5]}, "MI355X": {"dates": ["2026-05-10"], "prices": [8.6]}, "NVIDIA H200 NVL": {"dates": ["2026-05-10"], "prices": [0.5]}, "NVIDIA P4": {"dates": ["2026-05-10"], "prices": [0.6]}, "NVIDIA P4 Virtual Workstation": {"dates": ["2026-05-10"], "prices": [0.8]}, "P100": {"dates": ["2026-05-10"], "prices": [1.275]}, "P4000": {"dates": ["2026-05-10"], "prices": [0.51]}, "P5000": {"dates": ["2026-05-10"], "prices": [0.78]}, "PRO 6000 MIG 24GB": {"dates": ["2026-05-10"], "prices": [0.49]}, "PRO 6000 MIG 48GB": {"dates": ["2026-05-10"], "prices": [1.0]}, "RTX 2000 Ada": {"dates": ["2026-05-10"], "prices": [0.24]}, "RTX 3070": {"dates": ["2026-05-10"], "prices": [0.13]}, "RTX 3080": {"dates": ["2026-05-10"], "prices": [0.1]}, "RTX 3090": {"dates": ["2026-05-10"], "prices": [0.15]}, "RTX 4000 Ada": {"dates": ["2026-05-10"], "prices": [0.2]}, "RTX 4000 Ada SFF": {"dates": ["2026-05-10"], "prices": [0.18]}, "RTX 4070 Ti": {"dates": ["2026-05-10"], "prices": [0.19]}, "RTX 4080": {"dates": ["2026-05-10"], "prices": [0.14]}, "RTX 4090": {"dates": ["2026-05-10"], "prices": [0.25]}, "RTX 5000 Ada": {"dates": ["2026-05-10"], "prices": [0.49]}, "RTX 5080": {"dates": ["2026-05-10"], "prices": [0.39]}, "RTX 5090": {"dates": ["2026-05-10"], "prices": [0.69]}, "RTX 6000 Ada": {"dates": ["2026-05-10"], "prices": [0.3]}, "RTX A2000": {"dates": ["2026-05-10"], "prices": [0.12]}, "RTX A4000": {"dates": ["2026-05-10"], "prices": [0.17]}, "RTX A4500": {"dates": ["2026-05-10"], "prices": [0.19]}, "RTX A5000": {"dates": ["2026-05-10"], "prices": [0.16]}, "RTX PRO 4500": {"dates": ["2026-05-10"], "prices": [0.34]}, "RTX4000": {"dates": ["2026-05-10"], "prices": [0.51]}, "T4": {"dates": ["2026-05-10"], "prices": [0.35]}, "V100 16GB": {"dates": ["2026-05-10"], "prices": [0.19]}, "V100 32GB": {"dates": ["2026-05-10"], "prices": [2.3]}, "g4dn.metal": {"dates": ["2026-05-10"], "prices": [7.824]}, "g6.2xlarge": {"dates": ["2026-05-10"], "prices": [0.9776]}, "geforcertx2060super pcie 8gb": {"dates": ["2026-05-10"], "prices": [0.144]}, "geforcertx3070ti pcie 8gb": {"dates": ["2026-05-10"], "prices": [0.12]}, "geforcertx5090 pcie 32gb": {"dates": ["2026-05-10"], "prices": [0.46]}, "p5.4xlarge": {"dates": ["2026-05-10"], "prices": [6.88]}, "rtx5000ada pcie 32gb": {"dates": ["2026-05-10"], "prices": [0.55]}, "rtxa4000 pcie 16gb": {"dates": ["2026-05-10"], "prices": [0.07]}, "rtxa5000 pcie 24gb": {"dates": ["2026-05-10"], "prices": [0.21]}}, "latest": [{"gpu_model": "A10", "best_provider": "OCI", "best_region": "unknown", "best_price": 2.0, "offer_count": 1}, {"gpu_model": "A100 40GB", "best_provider": "CoreWeave", "best_region": "us-east", "best_price": 1.65, "offer_count": 1}, {"gpu_model": "A100 40GB PCIe", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.6, "offer_count": 2}, {"gpu_model": "A100 40GB SXM", "best_provider": "RunPod Community", "best_region": "global", "best_price": 1.0, "offer_count": 2}, {"gpu_model": "A100 80GB", "best_provider": "RunPod Community", "best_region": "global", "best_price": 1.19, "offer_count": 5}, {"gpu_model": "A100 80GB PCIe", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 1.25, "offer_count": 2}, {"gpu_model": "A100 80GB SXM", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.85, "offer_count": 2}, {"gpu_model": "A10G", "best_provider": "AWS", "best_region": "us-east", "best_price": 1.006, "offer_count": 1}, {"gpu_model": "A40", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.33, "offer_count": 4}, {"gpu_model": "A6000", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.33, "offer_count": 5}, {"gpu_model": "B200", "best_provider": "RunPod", "best_region": "global", "best_price": 5.49, "offer_count": 3}, {"gpu_model": "B300", "best_provider": "RunPod Community", "best_region": "global", "best_price": 6.94, "offer_count": 3}, {"gpu_model": "H100 NVL", "best_provider": "CoreWeave", "best_region": "us-east", "best_price": 2.49, "offer_count": 3}, {"gpu_model": "H100 PCIe", "best_provider": "RunPod Community", "best_region": "global", "best_price": 1.99, "offer_count": 2}, {"gpu_model": "H100 SXM", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 1.99, "offer_count": 6}, {"gpu_model": "H200", "best_provider": "OCI", "best_region": "unknown", "best_price": 10.0, "offer_count": 1}, {"gpu_model": "H200 SXM", "best_provider": "RunPod Community", "best_region": "global", "best_price": 3.59, "offer_count": 2}, {"gpu_model": "L4", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.225, "offer_count": 4}, {"gpu_model": "L40", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.69, "offer_count": 2}, {"gpu_model": "L40S", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.475, "offer_count": 4}, {"gpu_model": "MI300X", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.5, "offer_count": 3}, {"gpu_model": "MI355X", "best_provider": "OCI", "best_region": "unknown", "best_price": 8.6, "offer_count": 1}, {"gpu_model": "NVIDIA H200 NVL", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.5, "offer_count": 2}, {"gpu_model": "NVIDIA P4", "best_provider": "GCP", "best_region": "us-central", "best_price": 0.6, "offer_count": 1}, {"gpu_model": "NVIDIA P4 Virtual Workstation", "best_provider": "GCP", "best_region": "us-central", "best_price": 0.8, "offer_count": 1}, {"gpu_model": "P100", "best_provider": "OCI", "best_region": "unknown", "best_price": 1.275, "offer_count": 2}, {"gpu_model": "P4000", "best_provider": "Paperspace", "best_region": "unknown", "best_price": 0.51, "offer_count": 1}, {"gpu_model": "P5000", "best_provider": "Paperspace", "best_region": "unknown", "best_price": 0.78, "offer_count": 1}, {"gpu_model": "PRO 6000 MIG 24GB", "best_provider": "RunPod", "best_region": "global", "best_price": 0.49, "offer_count": 2}, {"gpu_model": "PRO 6000 MIG 48GB", "best_provider": "RunPod", "best_region": "global", "best_price": 1.0, "offer_count": 2}, {"gpu_model": "RTX 2000 Ada", "best_provider": "RunPod", "best_region": "global", "best_price": 0.24, "offer_count": 2}, {"gpu_model": "RTX 3070", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.13, "offer_count": 1}, {"gpu_model": "RTX 3080", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.1, "offer_count": 2}, {"gpu_model": "RTX 3090", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.15, "offer_count": 3}, {"gpu_model": "RTX 4000 Ada", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.2, "offer_count": 2}, {"gpu_model": "RTX 4000 Ada SFF", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.18, "offer_count": 2}, {"gpu_model": "RTX 4070 Ti", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.19, "offer_count": 2}, {"gpu_model": "RTX 4080", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.14, "offer_count": 3}, {"gpu_model": "RTX 4090", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.25, "offer_count": 3}, {"gpu_model": "RTX 5000 Ada", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.49, "offer_count": 2}, {"gpu_model": "RTX 5080", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.39, "offer_count": 2}, {"gpu_model": "RTX 5090", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.69, "offer_count": 2}, {"gpu_model": "RTX 6000 Ada", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.3, "offer_count": 3}, {"gpu_model": "RTX A2000", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.12, "offer_count": 2}, {"gpu_model": "RTX A4000", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.17, "offer_count": 2}, {"gpu_model": "RTX A4500", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.19, "offer_count": 2}, {"gpu_model": "RTX A5000", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.16, "offer_count": 3}, {"gpu_model": "RTX PRO 4500", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.34, "offer_count": 2}, {"gpu_model": "RTX4000", "best_provider": "Paperspace", "best_region": "unknown", "best_price": 0.51, "offer_count": 1}, {"gpu_model": "T4", "best_provider": "GCP", "best_region": "us-central", "best_price": 0.35, "offer_count": 2}, {"gpu_model": "V100 16GB", "best_provider": "RunPod Community", "best_region": "global", "best_price": 0.19, "offer_count": 6}, {"gpu_model": "V100 32GB", "best_provider": "Paperspace", "best_region": "unknown", "best_price": 2.3, "offer_count": 1}, {"gpu_model": "g4dn.metal", "best_provider": "AWS", "best_region": "us-east", "best_price": 7.824, "offer_count": 1}, {"gpu_model": "g6.2xlarge", "best_provider": "AWS", "best_region": "us-east", "best_price": 0.9776, "offer_count": 1}, {"gpu_model": "geforcertx2060super pcie 8gb", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.144, "offer_count": 1}, {"gpu_model": "geforcertx3070ti pcie 8gb", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.12, "offer_count": 1}, {"gpu_model": "geforcertx5090 pcie 32gb", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.46, "offer_count": 1}, {"gpu_model": "p5.4xlarge", "best_provider": "AWS", "best_region": "us-east", "best_price": 6.88, "offer_count": 1}, {"gpu_model": "rtx5000ada pcie 32gb", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.55, "offer_count": 1}, {"gpu_model": "rtxa4000 pcie 16gb", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.07, "offer_count": 1}, {"gpu_model": "rtxa5000 pcie 24gb", "best_provider": "TensorDock", "best_region": "unknown", "best_price": 0.21, "offer_count": 1}], "movers": []};
+
+/* ── Render Chart.js sparklines ─────────────────────────────────────────── */
+document.querySelectorAll('.gpu-card').forEach(card => {
+  const canvasId = card.dataset.canvas;
+  const color    = card.dataset.color;
+  const series   = JSON.parse(card.dataset.series);
+
+  const ctx = document.getElementById(canvasId);
+  if (!ctx || !series.data.length) return;
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: series.labels,
+      datasets: [{
+        data:            series.data,
+        borderColor:     color,
+        backgroundColor: color + '22',
+        borderWidth:     2,
+        pointRadius:     series.data.length <= 7 ? 3 : 0,
+        pointHoverRadius: 4,
+        fill:            true,
+        tension:         0.3,
+      }],
+    },
+    options: {
+      responsive:         true,
+      maintainAspectRatio: false,
+      animation:          { duration: 400 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => '$' + ctx.parsed.y.toFixed(4) + '/hr',
+          },
+        },
+      },
+      scales: {
+        x: {
+          display: series.data.length > 3,
+          ticks: {
+            color:    '#64748B',
+            font:     { size: 9 },
+            maxTicksLimit: 5,
+            maxRotation: 0,
+          },
+          grid: { color: '#1E2D45' },
+        },
+        y: {
+          display: true,
+          ticks: {
+            color:    '#64748B',
+            font:     { size: 9 },
+            maxTicksLimit: 4,
+            callback: v => '$' + v.toFixed(2),
+          },
+          grid: { color: '#1E2D45' },
+        },
+      },
+    },
+  });
+});
+
+/* ── Relative timestamp ─────────────────────────────────────────────────── */
+(function() {
+  const el = document.getElementById('rel-time');
+  if (!el) return;
+  const ts = new Date(el.textContent);
+  if (isNaN(ts)) return;
+  const mins = Math.round((Date.now() - ts) / 60000);
+  if (mins < 60)       el.textContent = mins + ' min ago';
+  else if (mins < 1440) el.textContent = Math.round(mins/60) + ' hr ago';
+  else                  el.textContent = Math.round(mins/1440) + ' days ago';
+})();
+</script>
+</body>
+</html>
