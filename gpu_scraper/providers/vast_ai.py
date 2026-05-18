@@ -41,8 +41,9 @@ class VastAIProvider(BaseProvider):
             vram_mb: int = offer.get("gpu_ram", 0) or 0
             vram_gb = vram_mb // 1024 if vram_mb > 1024 else (vram_mb or lookup_vram(canonical))
 
-            is_spot = bool(offer.get("min_bid"))
-            ctype = "spot" if is_spot else "on-demand"
+            # Vast.ai listings with a min_bid are interruptible/spot auctions;
+            # on-demand listings are regular hourly rentals.
+            is_interruptible = bool(offer.get("min_bid"))
 
             offers.append(GPUOffer(
                 provider=self.name,
@@ -51,8 +52,8 @@ class VastAIProvider(BaseProvider):
                 price_per_hour=price_per_gpu,  # already per GPU
                 price_unit="per_gpu",
                 region=offer.get("geolocation", "Unknown"),
-                contract_type=ctype,
-                availability=bool(offer.get("rentable")),
+                availability="interruptible" if is_interruptible else "on_demand",
+                available=bool(offer.get("rentable")),
                 gpu_count=num_gpus,
                 raw_gpu_name=raw_name,
             ))

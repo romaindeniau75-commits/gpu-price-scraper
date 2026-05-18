@@ -27,8 +27,8 @@ def make_offer(**kwargs) -> GPUOffer:
         price_per_hour=1.0,
         price_unit="per_gpu",
         region="us-east-1",
-        contract_type="on-demand",
-        availability=True,
+        availability="on_demand",
+        available=True,
     )
     defaults.update(kwargs)
     return GPUOffer(**defaults)
@@ -146,10 +146,10 @@ class TestAnalyticsPricePerGpu:
         offers = [
             make_offer(provider="AWS", price_per_hour=55.04,
                        price_unit="per_node", gpu_count=8,
-                       region="us-east-1", contract_type="on-demand"),
+                       region="us-east-1", availability="on_demand"),
             make_offer(provider="CoreWeave", price_per_hour=6.88,
                        price_unit="per_gpu", gpu_count=1,
-                       region="US", contract_type="on-demand"),
+                       region="US", availability="on_demand"),
         ]
         db = _db_with_offers(offers)
         analytics = PriceAnalytics(db)
@@ -163,11 +163,11 @@ class TestAnalyticsPricePerGpu:
         offers = [
             make_offer(provider="AWS", price_per_hour=16.00,
                        price_unit="per_node", gpu_count=8,
-                       region="us-east-1", contract_type="on-demand"),
+                       region="us-east-1", availability="on_demand"),
             # 16/8 = 2.00/GPU — same as RunPod below
             make_offer(provider="RunPod", price_per_hour=2.00,
                        price_unit="per_gpu", gpu_count=1,
-                       region="us-east-1", contract_type="on-demand"),
+                       region="us-east-1", availability="on_demand"),
         ]
         db = _db_with_offers(offers)
         analytics = PriceAnalytics(db)

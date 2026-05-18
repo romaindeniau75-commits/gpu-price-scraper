@@ -72,8 +72,8 @@ class CoreWeaveProvider(BaseProvider):
                 price_per_hour=price,
                 price_unit="per_gpu",  # CoreWeave lists /GPU/hr on pricing page
                 region="US",
-                contract_type="on-demand",
-                availability=True,
+                availability="on_demand",
+                available=True,
                 raw_gpu_name=raw_name,
             ))
 
@@ -90,8 +90,8 @@ class CoreWeaveProvider(BaseProvider):
                 price_per_hour=row["price"],
                 price_unit="per_gpu",
                 region=row["region"],
-                contract_type="on-demand",
-                availability=True,
+                availability="on_demand",
+                available=True,
                 raw_gpu_name=row["gpu"],
             )
             for row in _STATIC_PRICES

@@ -120,8 +120,8 @@ class AWSProvider(BaseProvider):
                             price_per_hour=price,   # raw node price — do NOT divide here
                             price_unit="per_node",  # price_per_gpu_hour auto-computed
                             region=region,
-                            contract_type="spot",
-                            availability=True,
+                            availability="spot",
+                            available=True,
                             gpu_count=gpu_count,
                             instance_type=itype,
                             raw_gpu_name=itype,
@@ -174,8 +174,8 @@ class AWSProvider(BaseProvider):
                         price_per_hour=price,   # raw node price — do NOT divide here
                         price_unit="per_node",  # price_per_gpu_hour auto-computed
                         region="us-east-1",
-                        contract_type="on-demand",
-                        availability=True,
+                        availability="on_demand",
+                        available=True,
                         gpu_count=gpu_count,
                         instance_type=itype,
                         raw_gpu_name=itype,

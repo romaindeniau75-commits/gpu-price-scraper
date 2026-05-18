@@ -80,6 +80,24 @@ def _contract_type(sku_name: str) -> str:
     return "on-demand"
 
 
+def _availability_tier(sku_name: str) -> str:
+    low = sku_name.lower()
+    if "spot" in low:
+        return "spot"
+    if "1 year" in low or "3 year" in low or "reserved" in low:
+        return "reserved"
+    return "on_demand"
+
+
+def _commitment_term(sku_name: str) -> str | None:
+    low = sku_name.lower()
+    if "1 year" in low:
+        return "1 year"
+    if "3 year" in low:
+        return "3 years"
+    return None
+
+
 class AzureProvider(BaseProvider):
     name = "Azure"
     timeout = 60.0
@@ -112,8 +130,9 @@ class AzureProvider(BaseProvider):
                     gpu_model = _infer_gpu(sku)
                     gpu_count = _infer_gpu_count(sku)
                     region: str = item.get("armRegionName", "unknown")
-                    ctype = _contract_type(item.get("skuName", ""))
-                    key = f"{sku}|{region}|{ctype}"
+                    sku_name = item.get("skuName", "")
+                    tier = _availability_tier(sku_name)
+                    key = f"{sku}|{region}|{tier}"
                     if key in seen:
                         continue
                     seen.add(key)
@@ -125,8 +144,9 @@ class AzureProvider(BaseProvider):
                         price_per_hour=retail_price,  # raw per-VM price
                         price_unit="per_node",         # price_per_gpu_hour auto-computed
                         region=region,
-                        contract_type=ctype,
-                        availability=True,
+                        availability=tier,
+                        commitment_term=_commitment_term(sku_name),
+                        available=True,
                         gpu_count=gpu_count,
                         instance_type=sku,
                         raw_gpu_name=sku,

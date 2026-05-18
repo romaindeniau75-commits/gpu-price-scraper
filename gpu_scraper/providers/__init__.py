@@ -4,8 +4,12 @@ from __future__ import annotations
 from .aws import AWSProvider
 from .azure import AzureProvider
 from .coreweave import CoreWeaveProvider
+from .crusoe import CrusoeProvider
+from .datacrunch import DataCrunchProvider
 from .gcp import GCPProvider
+from .hyperstack import HyperstackProvider
 from .lambda_labs import LambdaLabsProvider
+from .nebius import NebiusProvider
 from .oci import OCIProvider
 from .paperspace import PaperspaceProvider
 from .runpod import RunPodProvider
@@ -23,6 +27,10 @@ ALL_PROVIDERS = [
     GCPProvider,
     AzureProvider,
     OCIProvider,
+    DataCrunchProvider,
+    CrusoeProvider,
+    HyperstackProvider,
+    NebiusProvider,
 ]
 
 __all__ = [
@@ -30,8 +38,12 @@ __all__ = [
     "AWSProvider",
     "AzureProvider",
     "CoreWeaveProvider",
+    "CrusoeProvider",
+    "DataCrunchProvider",
     "GCPProvider",
+    "HyperstackProvider",
     "LambdaLabsProvider",
+    "NebiusProvider",
     "OCIProvider",
     "PaperspaceProvider",
     "RunPodProvider",

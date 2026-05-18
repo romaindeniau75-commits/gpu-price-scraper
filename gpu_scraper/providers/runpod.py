@@ -2,9 +2,14 @@
 
 Price semantics
 ---------------
-RunPod sells individual GPUs; all price fields (``securePrice``,
-``communityPrice``, ``secureSpotPrice``) are $/GPU/hr.
+RunPod sells individual GPUs; all price fields are $/GPU/hr.
 ``price_unit = "per_gpu"``; ``gpu_count = 1`` per offer.
+
+Availability tiers
+------------------
+Secure Cloud  on-demand → availability="on_demand"
+Secure Cloud  spot      → availability="spot"
+Community Cloud         → availability="community"
 """
 from __future__ import annotations
 
@@ -49,7 +54,7 @@ class RunPodProvider(BaseProvider):
             canonical = normalize_gpu_name(raw_name)
             vram = gt.get("memoryInGb") or lookup_vram(canonical)
 
-            # Secure cloud (data-centre grade) — on-demand, per GPU
+            # Secure Cloud — on-demand, per GPU
             if (price := gt.get("securePrice")) and price > 0:
                 offers.append(GPUOffer(
                     provider=self.name,
@@ -58,12 +63,12 @@ class RunPodProvider(BaseProvider):
                     price_per_hour=price,
                     price_unit="per_gpu",
                     region="Global",
-                    contract_type="on-demand",
-                    availability=True,
+                    availability="on_demand",
+                    available=True,
                     raw_gpu_name=raw_name,
                 ))
 
-            # Secure cloud — spot, per GPU
+            # Secure Cloud — spot (interruptible)
             if (spot := gt.get("secureSpotPrice")) and spot > 0:
                 offers.append(GPUOffer(
                     provider=self.name,
@@ -72,12 +77,12 @@ class RunPodProvider(BaseProvider):
                     price_per_hour=spot,
                     price_unit="per_gpu",
                     region="Global",
-                    contract_type="spot",
-                    availability=True,
+                    availability="spot",
+                    available=True,
                     raw_gpu_name=raw_name,
                 ))
 
-            # Community cloud — on-demand, per GPU
+            # Community Cloud — community-hosted hardware
             if (cprice := gt.get("communityPrice")) and cprice > 0:
                 offers.append(GPUOffer(
                     provider=f"{self.name} Community",
@@ -86,8 +91,8 @@ class RunPodProvider(BaseProvider):
                     price_per_hour=cprice,
                     price_unit="per_gpu",
                     region="Global",
-                    contract_type="on-demand",
-                    availability=True,
+                    availability="community",
+                    available=True,
                     raw_gpu_name=raw_name,
                 ))
 

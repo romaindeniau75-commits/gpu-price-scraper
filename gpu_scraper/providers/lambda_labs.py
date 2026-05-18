@@ -77,7 +77,7 @@ class LambdaLabsProvider(BaseProvider):
                 price_per_hour=price,      # raw per-instance price
                 price_unit="per_node",     # price_per_gpu_hour auto-computed
                 region=region_name,
-                contract_type="on-demand",
+                availability="on_demand",
                 availability=available,
                 gpu_count=gpu_count,
                 instance_type=name,

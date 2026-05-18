@@ -1,4 +1,12 @@
-"""Paperspace (DigitalOcean) — HTML scraper for public pricing page."""
+"""Crusoe Cloud — public pricing page HTML scraper.
+
+Price semantics
+---------------
+Crusoe lists on-demand per-GPU hourly rates.
+``price_unit = "per_gpu"``
+
+Crusoe is a clean-energy GPU cloud headquartered in the US.
+"""
 from __future__ import annotations
 
 import re
@@ -9,25 +17,24 @@ from ..models import GPUOffer
 from ..normalizer import normalize_gpu_name, lookup_vram
 from .base import BaseProvider
 
-_PRICING_URL = "https://www.paperspace.com/gpu-cloud-computing"
+_PRICING_URL = "https://crusoe.ai/cloud/pricing/"
 
-_PRICE_RE = re.compile(r"\$\s*(\d+(?:\.\d+)?)\s*/\s*hr", re.I)
+_PRICE_RE = re.compile(r"\$\s*(\d+(?:\.\d+)?)\s*(?:/\s*hr|/\s*hour|per\s*hour)", re.I)
 
-# Static fallback (updated 2025-Q2)
+# Static fallback — updated 2025-Q2
+# Source: https://crusoe.ai/cloud/pricing/
 _STATIC: list[dict] = [
-    {"gpu": "A100-80G",  "price": 3.18, "vram": 80, "region": "US East"},
-    {"gpu": "A100",      "price": 2.30, "vram": 40, "region": "US East"},
-    {"gpu": "A6000",     "price": 1.89, "vram": 48, "region": "US East"},
-    {"gpu": "V100-32G",  "price": 2.30, "vram": 32, "region": "US East"},
-    {"gpu": "V100",      "price": 1.50, "vram": 16, "region": "US East"},
-    {"gpu": "RTX4000",   "price": 0.51, "vram": 8,  "region": "US East"},
-    {"gpu": "P5000",     "price": 0.78, "vram": 16, "region": "US East"},
-    {"gpu": "P4000",     "price": 0.51, "vram": 8,  "region": "US East"},
+    {"gpu": "H100 SXM5 80GB",  "price": 2.42,  "vram": 80, "region": "US"},
+    {"gpu": "H100 PCIe 80GB",  "price": 2.14,  "vram": 80, "region": "US"},
+    {"gpu": "A100 SXM4 80GB",  "price": 1.79,  "vram": 80, "region": "US"},
+    {"gpu": "A100 PCIe 80GB",  "price": 1.59,  "vram": 80, "region": "US"},
+    {"gpu": "A100 SXM4 40GB",  "price": 1.39,  "vram": 40, "region": "US"},
+    {"gpu": "L40S",            "price": 1.25,  "vram": 48, "region": "US"},
 ]
 
 
-class PaperspaceProvider(BaseProvider):
-    name = "Paperspace"
+class CrusoeProvider(BaseProvider):
+    name = "Crusoe"
 
     async def _scrape(self) -> list[GPUOffer]:
         try:
@@ -43,16 +50,19 @@ class PaperspaceProvider(BaseProvider):
         tree = HTMLParser(resp.text)
         offers: list[GPUOffer] = []
 
-        for card in tree.css("[class*='machine'], [class*='gpu'], tr"):
-            text = card.text(strip=True)
+        # Crusoe pricing page uses table rows and/or card-style layouts
+        for row in tree.css("tr, [class*='pricing'], [class*='gpu-row']"):
+            text = row.text(strip=True)
             m = _PRICE_RE.search(text)
             if not m:
                 continue
             price = float(m.group(1))
+            if price <= 0:
+                continue
 
-            # Look for a GPU label in nearby elements
-            heading = card.css_first("h2, h3, h4, [class*='name'], [class*='title'], td")
-            raw_name = heading.text(strip=True) if heading else ""
+            # Best-effort name extraction from first cell / heading
+            name_node = row.css_first("td, th, [class*='name'], [class*='gpu']")
+            raw_name = name_node.text(strip=True) if name_node else ""
             if not raw_name:
                 continue
 
@@ -62,15 +72,15 @@ class PaperspaceProvider(BaseProvider):
                 gpu_model=canonical,
                 vram_gb=lookup_vram(canonical),
                 price_per_hour=price,
-                price_unit="per_gpu",  # Paperspace lists /GPU/hr
-                region="US East",
+                price_unit="per_gpu",
+                region="US",
                 availability="on_demand",
                 available=True,
                 raw_gpu_name=raw_name,
             ))
 
         if not offers:
-            raise ValueError("no offers parsed")
+            raise ValueError("no pricing rows found on live Crusoe page")
         return offers
 
     def _static_fallback(self) -> list[GPUOffer]:

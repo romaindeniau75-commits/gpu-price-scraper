@@ -104,8 +104,8 @@ class OCIProvider(BaseProvider):
                 price_per_hour=price,
                 price_unit="per_gpu",  # OCI lists /GPU/hr on product catalog
                 region="us-ashburn-1",
-                contract_type="on-demand",
-                availability=True,
+                availability="on_demand",
+                available=True,
                 gpu_count=1,
                 instance_type=item.get("partNumber", ""),
                 raw_gpu_name=display,

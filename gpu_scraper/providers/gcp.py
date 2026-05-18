@@ -16,24 +16,30 @@ from .base import BaseProvider
 
 _PRICING_URL = "https://cloud.google.com/compute/gpus-pricing"
 
-# Static prices (per GPU, on-demand, us-central1) — updated 2025-Q2
+# Static prices (per GPU, us-central1) — updated 2025-Q2
 # Source: https://cloud.google.com/compute/gpus-pricing
 _STATIC: list[dict] = [
-    # H100 (a3-highgpu family)
-    {"gpu": "H100 80GB",        "price": 4.0612, "vram": 80,  "region": "us-central1", "contract": "on-demand"},
-    {"gpu": "H100 Mega 80GB",   "price": 5.0765, "vram": 80,  "region": "us-central1", "contract": "on-demand"},
-    # A100 (a2 family)
-    {"gpu": "A100 80GB",        "price": 3.9482, "vram": 80,  "region": "us-central1", "contract": "on-demand"},
-    {"gpu": "A100 40GB",        "price": 2.9331, "vram": 40,  "region": "us-central1", "contract": "on-demand"},
-    # Other
-    {"gpu": "L4",               "price": 0.7063, "vram": 24,  "region": "us-central1", "contract": "on-demand"},
-    {"gpu": "T4",               "price": 0.3533, "vram": 16,  "region": "us-central1", "contract": "on-demand"},
-    {"gpu": "V100 16GB",        "price": 2.4800, "vram": 16,  "region": "us-central1", "contract": "on-demand"},
-    {"gpu": "P100 16GB",        "price": 1.4600, "vram": 16,  "region": "us-central1", "contract": "on-demand"},
+    # H100 (a3-highgpu family) — on-demand
+    {"gpu": "H100 80GB",        "price": 4.0612, "vram": 80,  "region": "us-central1", "tier": "on_demand"},
+    {"gpu": "H100 Mega 80GB",   "price": 5.0765, "vram": 80,  "region": "us-central1", "tier": "on_demand"},
+    # A100 (a2 family) — on-demand
+    {"gpu": "A100 80GB",        "price": 3.9482, "vram": 80,  "region": "us-central1", "tier": "on_demand"},
+    {"gpu": "A100 40GB",        "price": 2.9331, "vram": 40,  "region": "us-central1", "tier": "on_demand"},
+    # Other — on-demand
+    {"gpu": "L4",               "price": 0.7063, "vram": 24,  "region": "us-central1", "tier": "on_demand"},
+    {"gpu": "T4",               "price": 0.3533, "vram": 16,  "region": "us-central1", "tier": "on_demand"},
+    {"gpu": "V100 16GB",        "price": 2.4800, "vram": 16,  "region": "us-central1", "tier": "on_demand"},
+    {"gpu": "P100 16GB",        "price": 1.4600, "vram": 16,  "region": "us-central1", "tier": "on_demand"},
     # 1-year committed use (~37% off on-demand)
-    {"gpu": "H100 80GB",        "price": 2.5585, "vram": 80,  "region": "us-central1", "contract": "reserved"},
-    {"gpu": "A100 80GB",        "price": 2.4874, "vram": 80,  "region": "us-central1", "contract": "reserved"},
-    {"gpu": "A100 40GB",        "price": 1.8478, "vram": 40,  "region": "us-central1", "contract": "reserved"},
+    {"gpu": "H100 80GB",        "price": 2.5585, "vram": 80,  "region": "us-central1", "tier": "reserved", "term": "1 year"},
+    {"gpu": "A100 80GB",        "price": 2.4874, "vram": 80,  "region": "us-central1", "tier": "reserved", "term": "1 year"},
+    {"gpu": "A100 40GB",        "price": 1.8478, "vram": 40,  "region": "us-central1", "tier": "reserved", "term": "1 year"},
+    # Spot / preemptible (~60–70% off on-demand)
+    {"gpu": "H100 80GB",        "price": 1.3000, "vram": 80,  "region": "us-central1", "tier": "spot"},
+    {"gpu": "A100 80GB",        "price": 1.1900, "vram": 80,  "region": "us-central1", "tier": "spot"},
+    {"gpu": "A100 40GB",        "price": 0.8800, "vram": 40,  "region": "us-central1", "tier": "spot"},
+    {"gpu": "L4",               "price": 0.2100, "vram": 24,  "region": "us-central1", "tier": "spot"},
+    {"gpu": "T4",               "price": 0.1100, "vram": 16,  "region": "us-central1", "tier": "spot"},
 ]
 
 _PRICE_RE = re.compile(r"\$\s*(\d+\.\d+)")
@@ -84,8 +90,8 @@ class GCPProvider(BaseProvider):
                     price_per_hour=float(m.group(1)),
                     price_unit="per_gpu",  # GCP pricing page lists /GPU/hr
                     region="us-central1",
-                    contract_type="on-demand",
-                    availability=True,
+                    availability="on_demand",
+                    available=True,
                     raw_gpu_name=raw_name,
                 ))
 
@@ -102,8 +108,9 @@ class GCPProvider(BaseProvider):
                 price_per_hour=r["price"],
                 price_unit="per_gpu",  # GCP pricing page lists /GPU/hr
                 region=r["region"],
-                contract_type=r["contract"],
-                availability=True,
+                availability=r["tier"],
+                commitment_term=r.get("term"),
+                available=True,
                 raw_gpu_name=r["gpu"],
             )
             for r in _STATIC
