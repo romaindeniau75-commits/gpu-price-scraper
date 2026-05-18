@@ -1,6 +1,6 @@
 # Atlas GPU Price Scraper
 
-Real-time H100 / A100 cloud GPU pricing across 10+ providers, with persistent storage, arbitrage analytics, and a Streamlit dashboard.
+Real-time H100 / A100 cloud GPU pricing across 14 providers, with persistent storage, arbitrage analytics, and a Streamlit dashboard.
 
 ---
 
@@ -8,9 +8,10 @@ Real-time H100 / A100 cloud GPU pricing across 10+ providers, with persistent st
 
 | Layer | What it does |
 |-------|-------------|
-| **Scraper** | Fetches live prices from RunPod, Lambda Labs, Vast.ai, CoreWeave, Paperspace, TensorDock, AWS, GCP, Azure, OCI |
-| **Storage** | Persists every observation to SQLite with full audit trail |
-| **Analytics** | Computes min/median/max, market spread, and ranked arbitrage opportunities with opportunity scores |
+| **Scraper** | Fetches live prices from 14 providers (RunPod, Lambda Labs, Vast.ai, CoreWeave, Paperspace, TensorDock, AWS, GCP, Azure, OCI, DataCrunch, Crusoe, Hyperstack, Nebius) |
+| **Tiers** | Tracks `on_demand`, `spot`, `interruptible`, `community`, and `reserved` per offer; computes `interruptible` flag automatically |
+| **Storage** | Persists every observation to SQLite with full audit trail including availability tier and region canonical bucket |
+| **Analytics** | Computes min/median/max, market spread (on-demand only), spot discount view, and ranked arbitrage opportunities |
 | **Dashboard** | 5-page Streamlit app — market overview, arbitrage, provider comparison, historical trends, routing simulator |
 | **Automation** | `watch` mode re-scrapes on a configurable interval and logs price changes |
 
@@ -169,10 +170,15 @@ CREATE TABLE gpu_price_observations (
     gpu_model_raw         TEXT,                   -- original string from provider
     gpu_model_normalized  TEXT    NOT NULL,        -- canonical: "H100 SXM", "A100 80GB", …
     region                TEXT,
+    region_canonical      TEXT    NOT NULL DEFAULT 'unknown', -- canonical bucket: us-east, eu-west, …
     country               TEXT,                   -- derived: "US", "EU", "APAC", …
-    price_per_hour_usd    REAL    NOT NULL,
+    price_per_hour_usd    REAL    NOT NULL,        -- raw API price (may be per-node)
+    price_unit            TEXT    NOT NULL DEFAULT 'per_gpu', -- per_gpu | per_node
+    price_per_gpu_hour    REAL    NOT NULL DEFAULT 0.0,       -- normalised $/GPU/hr
     currency              TEXT    NOT NULL DEFAULT 'USD',
-    contract_type         TEXT,                   -- on-demand | spot | reserved
+    contract_type         TEXT,                   -- on-demand | spot | reserved (legacy compat)
+    availability_tier     TEXT    NOT NULL DEFAULT 'on_demand', -- on_demand|spot|interruptible|community|reserved
+    commitment_term       TEXT,                   -- e.g. "1 year", "3 years"
     availability_status   INTEGER NOT NULL DEFAULT 1,
     vram_gb               INTEGER,
     gpu_count             INTEGER NOT NULL DEFAULT 1,
@@ -212,6 +218,49 @@ Score < 0.4 → weak or stale (red).
 
 ---
 
+## Availability tiers
+
+Every offer stores an `availability` tier:
+
+| Tier | Meaning | `interruptible` | `contract_type` |
+|------|---------|-----------------|-----------------|
+| `on_demand` | Pay-as-you-go, no interruption risk | `False` | `on-demand` |
+| `spot` | Provider may reclaim the instance (AWS/Azure/GCP) | `True` | `spot` |
+| `interruptible` | Marketplace auction (Vast.ai min_bid listings) | `True` | `spot` |
+| `community` | Community-hosted hardware (RunPod Community Cloud) | `True` | `on-demand` |
+| `reserved` | Committed-use / reserved instances (1y or 3y) | `False` | `reserved` |
+
+The `interruptible` field is auto-computed from the tier and lets analytics filter without string comparisons.
+
+### Tier-aware analytics
+
+`get_market_stats()` and `find_opportunities()` default to **on-demand only** so spot prices never pollute the market spread metric:
+
+```python
+analytics = PriceAnalytics(db)
+
+# On-demand market (default)
+stats = analytics.get_market_stats(gpu_filter="H100")
+
+# All tiers combined
+stats_all = analytics.get_market_stats(gpu_filter="H100", availability_filter="all")
+
+# Spot discount view — compare best on-demand vs best spot per GPU
+discounts = analytics.get_spot_discount(gpu_filter="H100")
+# → DataFrame with: gpu_model, on_demand_min, spot_min, discount_abs, discount_pct
+```
+
+Example spot discount output:
+
+```
+gpu_model      on_demand_min  spot_min  discount_abs  discount_pct
+H100 SXM              4.06      1.30          2.76         67.98
+A100 80GB             3.95      1.19          2.76         69.87
+L4                    0.71      0.21          0.50         70.42
+```
+
+---
+
 ## Example arbitrage workflow
 
 ```bash
@@ -234,18 +283,22 @@ streamlit run dashboard/app.py
 
 ## Provider data sources
 
-| Provider | Auth | Method | Confidence |
-|----------|------|--------|-----------|
-| RunPod | None | GraphQL API | 95% |
-| Lambda Labs | `LAMBDA_API_KEY` | REST API | 95% |
-| Vast.ai | None | Public bundles API | 78% |
-| CoreWeave | None | HTML scrape + static fallback | 90% |
-| Paperspace | None | HTML scrape + static fallback | 82% |
-| TensorDock | None | REST API | 85% |
-| AWS | None | Spot JSONP + OD pricing JSON | 95% |
-| GCP | None | Pricing calculator JSON | 95% |
-| Azure | None | Retail Prices REST API | 95% |
-| OCI | None | Products REST API | 88% |
+| Provider | Auth | Method | Tiers | Confidence |
+|----------|------|--------|-------|-----------|
+| RunPod | None | GraphQL API | on_demand · spot · community | 95% |
+| Lambda Labs | `LAMBDA_API_KEY` | REST API | on_demand | 95% |
+| Vast.ai | None | Public bundles API | on_demand · interruptible | 78% |
+| CoreWeave | None | HTML scrape + static fallback | on_demand | 90% |
+| Paperspace | None | HTML scrape + static fallback | on_demand | 82% |
+| TensorDock | None | REST API | on_demand | 85% |
+| AWS | None | Spot JSONP + OD pricing JSON | on_demand · spot | 95% |
+| GCP | None | HTML scrape + static fallback | on_demand · spot · reserved | 95% |
+| Azure | None | Retail Prices REST API | on_demand · spot · reserved | 95% |
+| OCI | None | Products REST API | on_demand | 88% |
+| DataCrunch | None | Public REST API | on_demand · spot | 88% |
+| Crusoe | None | HTML scrape + static fallback | on_demand | 85% |
+| Hyperstack | None | Static table (API requires auth) | on_demand | 80% |
+| Nebius | None | Static table (API requires auth) | on_demand | 82% |
 
 ---
 
