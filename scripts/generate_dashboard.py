@@ -95,6 +95,9 @@ _PLAUSIBILITY_BOUNDS: dict[str, tuple[float, float]] = {
     "P100":    (0.10,  2.50),
 }
 
+# Flagship GPU families included in the trend chart (after form-factor merge)
+FLAGSHIP_TREND_MODELS = {"H100", "H200", "B200"}
+
 _CARD_COLORS = [
     "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6",
     "#EC4899", "#06B6D4", "#F97316", "#84CC16", "#6366F1",
@@ -181,6 +184,19 @@ def _meta(provider: str, region: str = "", commitment_term: str = "",
 
 
 # ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def _is_plausible(price: float, base: Optional[str], tier: str) -> bool:
+    """Return True if price is within plausibility bounds for this GPU + tier."""
+    if base is None or base not in _PLAUSIBILITY_BOUNDS:
+        return True
+    lo, hi = _PLAUSIBILITY_BOUNDS[base]
+    effective_lo = lo if tier in ("on_demand", "reserved") else lo * 0.30
+    return effective_lo <= price <= hi
+
+
+# ---------------------------------------------------------------------------
 # Data builders
 # ---------------------------------------------------------------------------
 
@@ -209,20 +225,15 @@ def _build_raw_offers(con: sqlite3.Connection, ld: str) -> list[dict]:
         base  = _gpu_base(o["gpu_model"])
 
         # 1 — Plausibility bounds (catches single-point outliers).
-        #     On-demand/reserved: full [lo, hi] window.
-        #     Spot/community/interruptible: relaxed floor at 30 % of lo (prices
-        #     can be deeply discounted, but can't be implausibly close to zero).
-        #     Ceiling applies to all tiers.
-        if base and base in _PLAUSIBILITY_BOUNDS:
-            lo, hi = _PLAUSIBILITY_BOUNDS[base]
-            tier_str = o["availability_tier"]
-            effective_lo = lo if tier_str in ("on_demand", "reserved") else lo * 0.30
-            if price < effective_lo or price > hi:
+        if not _is_plausible(price, base, o["availability_tier"]):
+            if base and base in _PLAUSIBILITY_BOUNDS:
+                lo, hi = _PLAUSIBILITY_BOUNDS[base]
+                eff = lo if o["availability_tier"] in ("on_demand", "reserved") else lo * 0.30
                 print(
                     f"WARNING plausibility excluded: {o['gpu_model']} @ {o['provider']} "
-                    f"${price:.4f}/hr (bounds=[${effective_lo:.2f}, ${hi:.2f}])"
+                    f"${price:.4f}/hr (bounds=[${eff:.2f}, ${hi:.2f}])"
                 )
-                continue
+            continue
 
         # 2 — Statistical outlier filter: >3× median within same (model, tier)
         key   = (o["gpu_model"], o["availability_tier"])
@@ -473,6 +484,50 @@ def _build_spread_leaders(con: sqlite3.Connection) -> list[dict]:
         (ld, ld),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def compute_flagship_trend(con: sqlite3.Connection) -> list[dict]:
+    """Compute per-date average on-demand and spot prices for FLAGSHIP_TREND_MODELS.
+
+    Returns a list sorted by date:
+      [{"date": "2026-05-10", "avg_on_demand": 3.12, "avg_spot": 1.05}, ...]
+    Prices are plausibility-filtered (same rules as the main display).
+    """
+    rows = con.execute(
+        """
+        SELECT snapshot_date, gpu_model, availability_tier, price_per_gpu_hour
+        FROM   price_history
+        ORDER  BY snapshot_date
+        """
+    ).fetchall()
+
+    date_od: dict[str, list[float]] = defaultdict(list)
+    date_sp: dict[str, list[float]] = defaultdict(list)
+
+    for r in rows:
+        base  = _gpu_base(r["gpu_model"])
+        if base not in FLAGSHIP_TREND_MODELS:
+            continue
+        price = r["price_per_gpu_hour"]
+        tier  = r["availability_tier"]
+        if not _is_plausible(price, base, tier):
+            continue
+        date  = r["snapshot_date"]
+        if tier == "on_demand":
+            date_od[date].append(price)
+        elif tier in _SPOT_TIERS:
+            date_sp[date].append(price)
+
+    all_dates = sorted(set(list(date_od) + list(date_sp)))
+    result: list[dict] = []
+    for date in all_dates:
+        od_prices = date_od.get(date, [])
+        sp_prices = date_sp.get(date, [])
+        avg_od = round(sum(od_prices) / len(od_prices), 4) if od_prices else None
+        avg_sp = round(sum(sp_prices) / len(sp_prices), 4) if sp_prices else None
+        result.append({"date": date, "avg_on_demand": avg_od, "avg_spot": avg_sp})
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -836,6 +891,41 @@ html{
 .spread-prices{font-size:.78rem}
 .spread-od{color:var(--t2)}.spread-arr{color:var(--t3)}.spread-sp{color:var(--cyan);font-weight:600}
 
+/* ── Flagship Trend Chart ────────────────────────────────────────────── */
+#flagship-trend-chart{margin-bottom:52px}
+.trend-card{
+  background:var(--card);border:1px solid rgba(59,130,246,.25);
+  border-radius:var(--r);padding:24px;
+}
+.trend-chart-wrap{position:relative;height:320px}
+.trend-placeholder{
+  height:320px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;
+}
+.trend-placeholder-icon{
+  width:52px;height:52px;
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  background:rgba(59,130,246,.18);border:1px solid rgba(59,130,246,.4);
+  box-shadow:0 0 28px rgba(59,130,246,.45);
+  display:flex;align-items:center;justify-content:center;
+}
+.trend-placeholder-inner{
+  width:18px;height:18px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 12px rgba(59,130,246,.8);
+}
+.trend-placeholder-msg{
+  color:#94A3B8;font-size:.9rem;text-align:center;
+  max-width:400px;line-height:1.7;
+}
+.trend-placeholder-msg strong{color:var(--t1)}
+.trend-stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.trend-stat{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;padding:7px 14px;font-size:.78rem;color:var(--t2);
+}
+.trend-stat strong{color:var(--t1);font-weight:700}
+.ts-up{color:var(--red)}.ts-down{color:var(--green)}
+
 /* ── Misc ────────────────────────────────────────────────────────────── */
 .notice-msg{color:var(--t3);font-style:italic;font-size:.88rem;padding:8px 0}
 .site-footer{
@@ -884,6 +974,93 @@ if (legBtn) {
   });
 }
 
+/* ── Flagship trend chart ───────────────────────────────────────────── */
+(function() {
+  var canvas = document.getElementById('flagship-trend-canvas');
+  if (!canvas) return;
+  var raw = canvas.dataset.series;
+  if (!raw) return;
+  var s; try { s = JSON.parse(raw); } catch(e) { return; }
+  if (!s || !s.labels || s.labels.length < 2) return;
+  var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var MONTHS_LONG  = ['January','February','March','April','May','June',
+                      'July','August','September','October','November','December'];
+  var labels = s.labels.map(function(d) {
+    var p = d.split('-');
+    return MONTHS_SHORT[parseInt(p[1],10)-1] + ' ' + parseInt(p[2],10);
+  });
+  new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'On-Demand',
+          data: s.on_demand,
+          borderColor: '#3B82F6',
+          backgroundColor: 'rgba(59,130,246,0.08)',
+          borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
+          fill: true, tension: 0.35, spanGaps: true,
+        },
+        {
+          label: 'Spot / Interruptible',
+          data: s.spot,
+          borderColor: '#06B6D4',
+          backgroundColor: 'rgba(6,182,212,0.08)',
+          borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
+          fill: true, tension: 0.35, spanGaps: true,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 600 },
+      plugins: {
+        legend: {
+          display: true, position: 'top', align: 'end',
+          labels: {
+            color: '#94A3B8', usePointStyle: true,
+            pointStyleWidth: 10, boxHeight: 6,
+            font: { size: 12, weight: '600' }
+          }
+        },
+        tooltip: {
+          backgroundColor: '#0D1B3D',
+          borderColor: 'rgba(59,130,246,0.4)', borderWidth: 1,
+          titleColor: '#FFFFFF', bodyColor: '#94A3B8', padding: 12,
+          callbacks: {
+            title: function(items) {
+              var iso = s.labels[items[0].dataIndex];
+              var p = iso.split('-');
+              return p[2] + ' ' + MONTHS_LONG[parseInt(p[1],10)-1] + ' ' + p[0];
+            },
+            label: function(item) {
+              var v = item.raw;
+              if (v === null || v === undefined) return item.dataset.label + ': N/A';
+              return item.dataset.label + ': $' + v.toFixed(4) + '/hr avg';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          grid: { display: false },
+          ticks: { color: '#94A3B8', font: { size: 11 } }
+        },
+        y: {
+          display: true,
+          grid: { color: 'rgba(148,163,184,0.08)' },
+          ticks: {
+            color: '#94A3B8', font: { size: 11 },
+            callback: function(v) { return '$' + v.toFixed(2); }
+          }
+        }
+      }
+    }
+  });
+})();
+
 /* ── Relative timestamp ─────────────────────────────────────────────── */
 (function() {
   var el = document.getElementById('rel-time');
@@ -899,6 +1076,95 @@ if (legBtn) {
 """
 
 
+def _render_flagship_trend_html(trend: list[dict]) -> str:
+    """Render the flagship price trend section HTML."""
+    have_chart = len(trend) >= 2
+
+    if have_chart:
+        series = {
+            "labels":    [d["date"]         for d in trend],
+            "on_demand": [d["avg_on_demand"] for d in trend],
+            "spot":      [d["avg_spot"]      for d in trend],
+        }
+        chart_inner = (
+            f'<div class="trend-chart-wrap">'
+            f"<canvas id='flagship-trend-canvas' "
+            f"data-series='{json.dumps(series)}'></canvas>"
+            f"</div>"
+        )
+    else:
+        n = len(trend)
+        s = "s" if n != 1 else ""
+        chart_inner = (
+            f'<div class="trend-placeholder">'
+            f'<div class="trend-placeholder-icon">'
+            f'<div class="trend-placeholder-inner"></div>'
+            f'</div>'
+            f'<div class="trend-placeholder-msg">'
+            f'Building trend data&hellip; '
+            f'<strong>{n} day{s}</strong> of history.<br>'
+            f'Curves will appear once 2+ daily snapshots are available.'
+            f'</div>'
+            f'</div>'
+        )
+
+    # Mini-stats chips
+    stats_parts: list[str] = []
+    if trend:
+        latest = trend[-1]
+        od = latest.get("avg_on_demand")
+        sp = latest.get("avg_spot")
+        if od is not None:
+            stats_parts.append(
+                f'<div class="trend-stat">Current on-demand avg: '
+                f'<strong>${od:.2f}/hr</strong></div>'
+            )
+        if sp is not None:
+            stats_parts.append(
+                f'<div class="trend-stat">Current spot avg: '
+                f'<strong>${sp:.2f}/hr</strong></div>'
+            )
+        if od and sp and od > 0 and od > sp:
+            spread = (od - sp) / od * 100
+            stats_parts.append(
+                f'<div class="trend-stat">Current avg spread: '
+                f'<strong>&minus;{spread:.1f}%</strong></div>'
+            )
+        # 7-day change chip (only when >= 7 data points)
+        if len(trend) >= 7 and od is not None:
+            old_od = trend[-7].get("avg_on_demand")
+            if old_od and old_od > 0:
+                change = (od - old_od) / old_od * 100
+                sign   = "+" if change >= 0 else ""
+                cls    = "ts-up" if change > 0.05 else ("ts-down" if change < -0.05 else "")
+                arrow  = "▲" if change > 0.05 else ("▼" if change < -0.05 else "—")
+                stats_parts.append(
+                    f'<div class="trend-stat">7d change: '
+                    f'<strong class="{cls}">{arrow} {sign}{change:.1f}%</strong></div>'
+                )
+
+    stats_html = (
+        f'<div class="trend-stats">{"".join(stats_parts)}</div>'
+        if stats_parts else ""
+    )
+
+    return (
+        f'<section class="sec" id="flagship-trend-chart">\n'
+        f'<div class="sec-hdr">'
+        f'<span class="sec-label">Flagship GPU Price Trend</span>'
+        f'<div class="sec-rule"></div>'
+        f'<span class="sec-sub">'
+        f'H100 &middot; H200 &middot; B200 &mdash; daily average across all providers'
+        f'</span>'
+        f'</div>\n'
+        f'<div class="trend-card">\n'
+        f'{chart_inner}\n'
+        f'{stats_html}\n'
+        f'</div>\n'
+        f'</section>'
+    )
+
+
 # ---------------------------------------------------------------------------
 # HTML assembler
 # ---------------------------------------------------------------------------
@@ -912,6 +1178,7 @@ def generate_html(
     movers:   dict,
     leaders:  list[dict],
     gen_ts:   str,
+    flagship_trend: list[dict] = [],
 ) -> str:
     snap_date = hero.get("latest_date") or "N/A"
     day_count = hero.get("day_count", 0)
@@ -985,6 +1252,7 @@ def generate_html(
 
     movers_html  = _render_movers(movers)
     leaders_html = _render_spread_leaders(leaders)
+    trend_html   = _render_flagship_trend_html(flagship_trend)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -1016,6 +1284,8 @@ def generate_html(
 
 <div class="page">
   <div class="hero">{hero_html}</div>
+
+  {trend_html}
 
   <section class="sec">
     <div class="sec-hdr">
@@ -1097,16 +1367,27 @@ def main() -> None:
     for group_list in (flagship, workhorse, inference, legacy):
         _attach_sparklines(group_list, sl)
 
-    hero    = _build_hero_stats(con, flagship, workhorse, inference, legacy)
-    movers  = _build_movers(con, hero["day_count"])
-    leaders = _build_spread_leaders(con)
+    hero            = _build_hero_stats(con, flagship, workhorse, inference, legacy)
+    movers          = _build_movers(con, hero["day_count"])
+    leaders         = _build_spread_leaders(con)
+    flagship_trend  = compute_flagship_trend(con)
     con.close()
 
-    html = generate_html(hero, flagship, workhorse, inference, legacy, movers, leaders, gen_ts)
+    html = generate_html(
+        hero, flagship, workhorse, inference, legacy,
+        movers, leaders, gen_ts,
+        flagship_trend=flagship_trend,
+    )
 
     (DOCS_DIR / "index.html").write_text(html)
     (DOCS_DIR / "data.json").write_text(json.dumps(
-        {"generated_at": gen_ts, "hero": hero, "movers": movers, "spread_leaders": leaders},
+        {
+            "generated_at":   gen_ts,
+            "hero":           hero,
+            "movers":         movers,
+            "spread_leaders": leaders,
+            "flagship_trend": flagship_trend,
+        },
         indent=2,
     ))
 

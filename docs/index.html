@@ -194,6 +194,41 @@ html{
 .spread-prices{font-size:.78rem}
 .spread-od{color:var(--t2)}.spread-arr{color:var(--t3)}.spread-sp{color:var(--cyan);font-weight:600}
 
+/* ── Flagship Trend Chart ────────────────────────────────────────────── */
+#flagship-trend-chart{margin-bottom:52px}
+.trend-card{
+  background:var(--card);border:1px solid rgba(59,130,246,.25);
+  border-radius:var(--r);padding:24px;
+}
+.trend-chart-wrap{position:relative;height:320px}
+.trend-placeholder{
+  height:320px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;
+}
+.trend-placeholder-icon{
+  width:52px;height:52px;
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  background:rgba(59,130,246,.18);border:1px solid rgba(59,130,246,.4);
+  box-shadow:0 0 28px rgba(59,130,246,.45);
+  display:flex;align-items:center;justify-content:center;
+}
+.trend-placeholder-inner{
+  width:18px;height:18px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 12px rgba(59,130,246,.8);
+}
+.trend-placeholder-msg{
+  color:#94A3B8;font-size:.9rem;text-align:center;
+  max-width:400px;line-height:1.7;
+}
+.trend-placeholder-msg strong{color:var(--t1)}
+.trend-stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.trend-stat{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;padding:7px 14px;font-size:.78rem;color:var(--t2);
+}
+.trend-stat strong{color:var(--t1);font-weight:700}
+.ts-up{color:var(--red)}.ts-down{color:var(--green)}
+
 /* ── Misc ────────────────────────────────────────────────────────────── */
 .notice-msg{color:var(--t3);font-style:italic;font-size:.88rem;padding:8px 0}
 .site-footer{
@@ -216,7 +251,7 @@ html{
   <div>
     <div class="atlas-wm">Atlas</div>
     <div class="snap-date">
-      2026-05-18 &middot; <span id="rel-time" data-ts="2026-05-18T19:53:52.104499+00:00">...</span>
+      2026-05-18 &middot; <span id="rel-time" data-ts="2026-05-18T19:59:27.758348+00:00">...</span>
     </div>
   </div>
 </header>
@@ -228,6 +263,14 @@ html{
 <div class="stat-pill"><span class="sv">21</span><span class="sl">GPU families</span></div>
 <div class="stat-pill"><span class="sv">2</span><span class="sl">Days of history</span></div>
 <div class="stat-pill"><span class="sv">462</span><span class="sl">Price rows</span></div></div>
+
+  <section class="sec" id="flagship-trend-chart">
+<div class="sec-hdr"><span class="sec-label">Flagship GPU Price Trend</span><div class="sec-rule"></div><span class="sec-sub">H100 &middot; H200 &middot; B200 &mdash; daily average across all providers</span></div>
+<div class="trend-card">
+<div class="trend-chart-wrap"><canvas id='flagship-trend-canvas' data-series='{"labels": ["2026-05-10", "2026-05-18"], "on_demand": [5.2877, 4.4325], "spot": [3.5956, 3.0657]}'></canvas></div>
+<div class="trend-stats"><div class="trend-stat">Current on-demand avg: <strong>$4.43/hr</strong></div><div class="trend-stat">Current spot avg: <strong>$3.07/hr</strong></div><div class="trend-stat">Current avg spread: <strong>&minus;30.8%</strong></div></div>
+</div>
+</section>
 
   <section class="sec">
     <div class="sec-hdr">
@@ -300,7 +343,7 @@ html{
 <footer class="site-footer">
   <span>Automated daily scrape &middot; 06:00 UTC &middot; on-demand prices per GPU, USD
   &middot; <a href="https://github.com/romaindeniau75-commits/gpu-price-scraper/actions">GitHub Actions</a></span>
-  <span>Generated 2026-05-18T19:53:52 UTC</span>
+  <span>Generated 2026-05-18T19:59:27 UTC</span>
 </footer>
 
 <script>
@@ -336,6 +379,93 @@ if (legBtn) {
     this.style.display = 'none';
   });
 }
+
+/* ── Flagship trend chart ───────────────────────────────────────────── */
+(function() {
+  var canvas = document.getElementById('flagship-trend-canvas');
+  if (!canvas) return;
+  var raw = canvas.dataset.series;
+  if (!raw) return;
+  var s; try { s = JSON.parse(raw); } catch(e) { return; }
+  if (!s || !s.labels || s.labels.length < 2) return;
+  var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var MONTHS_LONG  = ['January','February','March','April','May','June',
+                      'July','August','September','October','November','December'];
+  var labels = s.labels.map(function(d) {
+    var p = d.split('-');
+    return MONTHS_SHORT[parseInt(p[1],10)-1] + ' ' + parseInt(p[2],10);
+  });
+  new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'On-Demand',
+          data: s.on_demand,
+          borderColor: '#3B82F6',
+          backgroundColor: 'rgba(59,130,246,0.08)',
+          borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
+          fill: true, tension: 0.35, spanGaps: true,
+        },
+        {
+          label: 'Spot / Interruptible',
+          data: s.spot,
+          borderColor: '#06B6D4',
+          backgroundColor: 'rgba(6,182,212,0.08)',
+          borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
+          fill: true, tension: 0.35, spanGaps: true,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 600 },
+      plugins: {
+        legend: {
+          display: true, position: 'top', align: 'end',
+          labels: {
+            color: '#94A3B8', usePointStyle: true,
+            pointStyleWidth: 10, boxHeight: 6,
+            font: { size: 12, weight: '600' }
+          }
+        },
+        tooltip: {
+          backgroundColor: '#0D1B3D',
+          borderColor: 'rgba(59,130,246,0.4)', borderWidth: 1,
+          titleColor: '#FFFFFF', bodyColor: '#94A3B8', padding: 12,
+          callbacks: {
+            title: function(items) {
+              var iso = s.labels[items[0].dataIndex];
+              var p = iso.split('-');
+              return p[2] + ' ' + MONTHS_LONG[parseInt(p[1],10)-1] + ' ' + p[0];
+            },
+            label: function(item) {
+              var v = item.raw;
+              if (v === null || v === undefined) return item.dataset.label + ': N/A';
+              return item.dataset.label + ': $' + v.toFixed(4) + '/hr avg';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          grid: { display: false },
+          ticks: { color: '#94A3B8', font: { size: 11 } }
+        },
+        y: {
+          display: true,
+          grid: { color: 'rgba(148,163,184,0.08)' },
+          ticks: {
+            color: '#94A3B8', font: { size: 11 },
+            callback: function(v) { return '$' + v.toFixed(2); }
+          }
+        }
+      }
+    }
+  });
+})();
 
 /* ── Relative timestamp ─────────────────────────────────────────────── */
 (function() {

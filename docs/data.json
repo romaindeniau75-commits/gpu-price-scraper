@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-18T19:53:52.104499+00:00",
+  "generated_at": "2026-05-18T19:59:27.758348+00:00",
   "hero": {
     "gpu_count": 21,
     "provider_count": 13,
@@ -42,6 +42,18 @@
       "od_price": 1.006,
       "sp_price": 0.241,
       "spread_pct": 76.0
+    }
+  ],
+  "flagship_trend": [
+    {
+      "date": "2026-05-10",
+      "avg_on_demand": 5.2877,
+      "avg_spot": 3.5956
+    },
+    {
+      "date": "2026-05-18",
+      "avg_on_demand": 4.4325,
+      "avg_spot": 3.0657
     }
   ]
 }
