@@ -1,23 +1,23 @@
 {
-  "generated_at": "2026-05-18T19:32:02.953914+00:00",
+  "generated_at": "2026-05-18T19:53:52.104499+00:00",
   "hero": {
     "gpu_count": 21,
-    "provider_count": 9,
-    "day_count": 1,
-    "total_rows": 199,
-    "median_spot_discount": 79.2,
-    "latest_date": "2026-05-10"
+    "provider_count": 13,
+    "day_count": 2,
+    "total_rows": 462,
+    "median_spot_discount": 63.9,
+    "latest_date": "2026-05-18"
   },
   "movers": {
     "insufficient": true,
-    "have_days": 1
+    "have_days": 2
   },
   "spread_leaders": [
     {
-      "gpu_model": "V100 16GB",
-      "od_price": 0.19,
-      "sp_price": 0.0189,
-      "spread_pct": 90.1
+      "gpu_model": "A100 80GB",
+      "od_price": 1.39,
+      "sp_price": 0.1337,
+      "spread_pct": 90.4
     },
     {
       "gpu_model": "g4dn.metal",
@@ -26,22 +26,22 @@
       "spread_pct": 90.0
     },
     {
-      "gpu_model": "A100 80GB",
-      "od_price": 1.19,
-      "sp_price": 0.1337,
-      "spread_pct": 88.8
-    },
-    {
       "gpu_model": "g6.2xlarge",
       "od_price": 0.9776,
       "sp_price": 0.1259,
       "spread_pct": 87.1
     },
     {
-      "gpu_model": "B200",
-      "od_price": 5.49,
-      "sp_price": 1.0628,
-      "spread_pct": 80.6
+      "gpu_model": "V100 16GB",
+      "od_price": 0.1381,
+      "sp_price": 0.0192,
+      "spread_pct": 86.1
+    },
+    {
+      "gpu_model": "A10G",
+      "od_price": 1.006,
+      "sp_price": 0.241,
+      "spread_pct": 76.0
     }
   ]
 }

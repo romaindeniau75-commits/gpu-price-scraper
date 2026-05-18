@@ -56,7 +56,7 @@ def build_table(
         prev_gpu = o.gpu_model
 
         contract_style = _CONTRACT_STYLE.get(o.contract_type, "white")
-        avail_marker = _AVAIL_STYLE[o.availability]
+        avail_marker = _AVAIL_STYLE.get(o.available, "[dim]?[/dim]")
         price_str = f"${o.price_per_hour:.4f}"
 
         table.add_row(

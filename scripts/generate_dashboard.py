@@ -71,8 +71,29 @@ _DC_PROVIDERS = frozenset({
     "RunPod", "RunPod Community", "Vast.ai", "TensorDock",
 })
 
-_SPOT_TIERS  = frozenset({"spot", "interruptible"})
+_SPOT_TIERS  = frozenset({"spot", "interruptible", "community"})
 _SKIP_REGION = frozenset({"unknown", "global", ""})
+
+# Hard floor/ceiling per GPU base family — catches single-point outliers the
+# median filter misses. Prices in $/GPU/hr.
+_PLAUSIBILITY_BOUNDS: dict[str, tuple[float, float]] = {
+    "B300":    (5.00, 30.00),
+    "B200":    (5.00, 30.00),
+    "H200":    (2.50, 20.00),
+    "H100":    (1.00, 12.00),
+    "A100":    (0.80,  8.00),
+    "L40S":    (0.50,  6.00),
+    "L40":     (0.40,  5.00),
+    "A40":     (0.30,  4.00),
+    "A10G":    (0.20,  3.00),
+    "A10":     (0.20,  3.00),
+    "L4":      (0.10,  2.50),
+    "T4":      (0.10,  2.00),
+    "MI355X":  (2.00, 15.00),
+    "MI300X":  (1.50, 12.00),
+    "V100":    (0.30,  4.00),
+    "P100":    (0.10,  2.50),
+}
 
 _CARD_COLORS = [
     "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6",
@@ -184,15 +205,35 @@ def _build_raw_offers(con: sqlite3.Connection, ld: str) -> list[dict]:
 
     clean: list[dict] = []
     for o in offers:
+        price = o["price_per_gpu_hour"]
+        base  = _gpu_base(o["gpu_model"])
+
+        # 1 — Plausibility bounds (catches single-point outliers).
+        #     On-demand/reserved: full [lo, hi] window.
+        #     Spot/community/interruptible: relaxed floor at 30 % of lo (prices
+        #     can be deeply discounted, but can't be implausibly close to zero).
+        #     Ceiling applies to all tiers.
+        if base and base in _PLAUSIBILITY_BOUNDS:
+            lo, hi = _PLAUSIBILITY_BOUNDS[base]
+            tier_str = o["availability_tier"]
+            effective_lo = lo if tier_str in ("on_demand", "reserved") else lo * 0.30
+            if price < effective_lo or price > hi:
+                print(
+                    f"WARNING plausibility excluded: {o['gpu_model']} @ {o['provider']} "
+                    f"${price:.4f}/hr (bounds=[${effective_lo:.2f}, ${hi:.2f}])"
+                )
+                continue
+
+        # 2 — Statistical outlier filter: >3× median within same (model, tier)
         key   = (o["gpu_model"], o["availability_tier"])
         group = price_groups[key]
         if len(group) >= 2:
             med       = _stats_median(group)
             threshold = 3.0 * med
-            if o["price_per_gpu_hour"] > threshold:
+            if price > threshold:
                 print(
                     f"WARNING outlier excluded: {o['gpu_model']} @ {o['provider']} "
-                    f"${o['price_per_gpu_hour']:.4f}/hr "
+                    f"${price:.4f}/hr "
                     f"(median=${med:.4f}, 3× threshold=${threshold:.4f})"
                 )
                 continue
