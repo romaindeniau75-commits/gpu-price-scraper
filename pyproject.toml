@@ -29,3 +29,7 @@ dev = ["pytest>=8.0", "ruff>=0.4"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["gpu_scraper"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

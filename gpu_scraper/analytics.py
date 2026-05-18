@@ -124,12 +124,14 @@ class PriceAnalytics:
         gpu_filter: Optional[str] = None,
         region_filter: Optional[str] = None,
         contract_filter: Optional[str] = None,
+        availability_filter: Optional[str] = None,
         hours: int = 24,
     ) -> pd.DataFrame:
         rows = self.db.get_latest_prices(
             gpu_filter=gpu_filter,
             region_filter=region_filter,
             contract_filter=contract_filter,
+            availability_filter=availability_filter,
             hours=hours,
         )
         if not rows:
@@ -180,9 +182,20 @@ class PriceAnalytics:
         gpu_filter: Optional[str] = None,
         region_filter: Optional[str] = None,
         hours: int = 24,
+        availability_filter: str = "on_demand",
     ) -> pd.DataFrame:
-        """Aggregate price stats per (gpu_model, region_group, contract_type)."""
-        df = self._load_df(gpu_filter=gpu_filter, region_filter=region_filter, hours=hours)
+        """Aggregate price stats per (gpu_model, region_group, contract_type).
+
+        By default only includes on_demand offers so that spot/community prices
+        don't distort the market spread.  Pass ``availability_filter="all"``
+        (or any specific tier) to override.
+        """
+        df = self._load_df(
+            gpu_filter=gpu_filter,
+            region_filter=region_filter,
+            availability_filter=availability_filter if availability_filter != "all" else None,
+            hours=hours,
+        )
         if df.empty:
             return pd.DataFrame()
 
@@ -232,9 +245,20 @@ class PriceAnalytics:
         region_filter: Optional[str] = None,
         hours: int = 24,
         top_n: int = 30,
+        availability_filter: str = "on_demand",
     ) -> pd.DataFrame:
-        """Ranked arbitrage opportunities — cheapest offers vs market median."""
-        df = self._load_df(gpu_filter=gpu_filter, region_filter=region_filter, hours=hours)
+        """Ranked arbitrage opportunities — cheapest on-demand offers vs market median.
+
+        Only compares offers within the same availability tier (default: on_demand)
+        so that spot prices don't appear to "beat" on-demand prices.
+        Pass ``availability_filter="all"`` to compare across all tiers.
+        """
+        df = self._load_df(
+            gpu_filter=gpu_filter,
+            region_filter=region_filter,
+            availability_filter=availability_filter if availability_filter != "all" else None,
+            hours=hours,
+        )
         if df.empty:
             return pd.DataFrame()
 
@@ -424,3 +448,69 @@ class PriceAnalytics:
         )
         out.index = out.index + 1
         return out
+
+    # ------------------------------------------------- spot discount view
+
+    def get_spot_discount(
+        self,
+        gpu_filter: Optional[str] = None,
+        hours: int = 24,
+    ) -> pd.DataFrame:
+        """Compare best on-demand vs best spot/interruptible price per GPU model.
+
+        Returns a DataFrame with columns:
+            gpu_model, on_demand_min, spot_min, discount_abs, discount_pct
+        sorted by discount_pct descending (biggest savings first).
+
+        Only GPU models where both on-demand AND at least one
+        spot/interruptible tier offer exists are included.
+        """
+        od_df = self._load_df(
+            gpu_filter=gpu_filter,
+            availability_filter="on_demand",
+            hours=hours,
+        )
+        spot_df = self._load_df(
+            gpu_filter=gpu_filter,
+            hours=hours,
+        )
+        if od_df.empty or spot_df.empty:
+            return pd.DataFrame()
+
+        # Filter spot_df to interruptible tiers only
+        interruptible_tiers = {"spot", "interruptible", "community"}
+        if "availability_tier" in spot_df.columns:
+            spot_df = spot_df[spot_df["availability_tier"].isin(interruptible_tiers)]
+        else:
+            spot_df = spot_df[spot_df["contract_type"] == "spot"]
+
+        if spot_df.empty:
+            return pd.DataFrame()
+
+        od_min = (
+            od_df.groupby("gpu_model_normalized")["price_per_gpu_hour"]
+            .min()
+            .rename("on_demand_min")
+        )
+        spot_min = (
+            spot_df.groupby("gpu_model_normalized")["price_per_gpu_hour"]
+            .min()
+            .rename("spot_min")
+        )
+
+        combined = pd.concat([od_min, spot_min], axis=1).dropna()
+        if combined.empty:
+            return pd.DataFrame()
+
+        combined["discount_abs"] = combined["on_demand_min"] - combined["spot_min"]
+        combined["discount_pct"] = (
+            combined["discount_abs"] / combined["on_demand_min"] * 100
+        ).round(2)
+        combined = combined[combined["discount_abs"] > 0]  # only genuine discounts
+
+        return (
+            combined.reset_index()
+            .rename(columns={"gpu_model_normalized": "gpu_model"})
+            .sort_values("discount_pct", ascending=False)
+            .reset_index(drop=True)
+        )
