@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-05-18T19:15:50.419557+00:00",
+  "generated_at": "2026-05-18T19:32:02.953914+00:00",
   "hero": {
-    "gpu_count": 63,
+    "gpu_count": 21,
     "provider_count": 9,
     "day_count": 1,
     "total_rows": 199,
-    "median_spot_discount": 74.5,
+    "median_spot_discount": 79.2,
     "latest_date": "2026-05-10"
   },
   "movers": {

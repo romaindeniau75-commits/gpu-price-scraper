@@ -1,1144 +1,353 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Atlas GPU Pricing Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 :root{
-  --bg0:#0A1628;
-  --bg1:#0D1B3D;
+  --bg0:#0A1628;--bg1:#0D1B3D;
   --card:#0F1F3D;
-  --border:rgba(59,130,246,.20);
-  --border-hi:rgba(59,130,246,.50);
-  --accent:#3B82F6;
-  --cyan:#06B6D4;
-  --indigo:#6366F1;
-  --green:#10B981;
-  --red:#EF4444;
-  --amber:#F59E0B;
-  --text1:#FFFFFF;
-  --text2:#94A3B8;
-  --text3:#4B5E7A;
-  --glow:0 0 24px rgba(59,130,246,.35);
-  --r:16px;
+  --bd:rgba(59,130,246,.20);--bd-hi:rgba(59,130,246,.50);
+  --accent:#3B82F6;--cyan:#06B6D4;--indigo:#6366F1;
+  --green:#10B981;--red:#EF4444;--amber:#F59E0B;
+  --t1:#FFFFFF;--t2:#94A3B8;--t3:#4B5E7A;
+  --glow:0 0 24px rgba(59,130,246,.35);--r:16px;
 }
-
 html{
   background:linear-gradient(150deg,var(--bg0) 0%,var(--bg1) 100%);
-  background-attachment:fixed;
-  color:var(--text1);
+  background-attachment:fixed;color:var(--t1);
   font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
-  font-size:15px;
-  line-height:1.5;
-  min-height:100vh;
+  font-size:15px;line-height:1.5;min-height:100vh;
 }
+.page{max-width:1600px;margin:0 auto;padding:0 28px 80px}
 
-/* ── Page wrapper ─────────────────────────────────────────────── */
-.page{max-width:1600px;margin:0 auto;padding:0 28px 72px}
-
-/* ── Header ───────────────────────────────────────────────────── */
-.site-header{
+/* ── Header ─────────────────────────────────────────────────────────── */
+.site-hdr{
   display:flex;align-items:center;justify-content:space-between;
-  padding:24px 28px 20px;max-width:1600px;margin:0 auto;
-  border-bottom:1px solid var(--border);margin-bottom:36px;
+  padding:24px 28px 20px;max-width:1600px;margin:0 auto 36px;
+  border-bottom:1px solid var(--bd);
 }
 .hdr-left{display:flex;align-items:center;gap:14px}
-.logo-mark{
+.logo-dot{
   width:10px;height:10px;border-radius:50%;background:var(--accent);
-  box-shadow:0 0 14px rgba(59,130,246,.7);flex-shrink:0;
+  box-shadow:0 0 14px rgba(59,130,246,.8);flex-shrink:0;
 }
 .logo-brand{font-size:1.25rem;font-weight:800;letter-spacing:-.4px}
-.logo-sub{font-size:.78rem;color:var(--text2);margin-top:2px}
-.hdr-right .atlas-wordmark{
-  font-size:1rem;font-weight:900;letter-spacing:.25em;
-  color:var(--accent);text-transform:uppercase;
-}
-.hdr-right .snap-date{
-  font-size:.72rem;color:var(--text3);text-align:right;margin-top:3px;
-}
+.logo-sub{font-size:.78rem;color:var(--t2);margin-top:2px}
+.atlas-wm{font-size:1rem;font-weight:900;letter-spacing:.25em;color:var(--accent);text-transform:uppercase}
+.snap-date{font-size:.72rem;color:var(--t3);text-align:right;margin-top:3px}
 
-/* ── Hero stats ───────────────────────────────────────────────── */
-.hero-stats{
-  display:flex;flex-wrap:wrap;gap:14px;margin-bottom:40px;
-}
+/* ── Hero stats ─────────────────────────────────────────────────────── */
+.hero{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:44px}
 .stat-pill{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:12px;padding:14px 22px;display:flex;
-  flex-direction:column;gap:5px;min-width:140px;
+  background:var(--card);border:1px solid var(--bd);border-radius:12px;
+  padding:14px 22px;display:flex;flex-direction:column;gap:5px;min-width:148px;
 }
-.stat-value{
+.sv{
   font-size:1.65rem;font-weight:800;
   background:linear-gradient(90deg,var(--accent),var(--cyan));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
 }
-.stat-value.disc{
-  background:linear-gradient(90deg,var(--cyan),var(--green));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-}
-.stat-label{
-  font-size:.68rem;font-weight:700;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--text2);
-}
+.sv.kpi{background:linear-gradient(90deg,var(--cyan),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sl{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t2)}
 
-/* ── Section header ───────────────────────────────────────────── */
-.sec-hdr{
-  display:flex;align-items:center;gap:12px;
-  margin-bottom:20px;
-}
-.sec-label{
-  font-size:.68rem;font-weight:800;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--accent);white-space:nowrap;
-}
-.sec-rule{flex:1;height:1px;background:var(--border)}
-.section{margin-bottom:52px}
+/* ── Section headings ───────────────────────────────────────────────── */
+.sec{margin-bottom:52px}
+.sec-hdr{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.sec-label{font-size:.65rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);white-space:nowrap}
+.sec-rule{flex:1;height:1px;background:var(--bd)}
+.sec-sub{font-size:.7rem;color:var(--t3);white-space:nowrap}
 
-/* ── GPU card grid ────────────────────────────────────────────── */
-.gpu-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(340px,1fr));
-  gap:18px;
-}
-.gpu-card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--r);
-  padding:20px;
-  display:flex;flex-direction:column;gap:0;
+/* ── Card grids ─────────────────────────────────────────────────────── */
+.flag-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.work-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:1100px){.work-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:800px){.flag-grid,.work-grid{grid-template-columns:1fr}}
+
+/* ── GPU cards (flagship + workhorse) ───────────────────────────────── */
+.flag-card,.work-card{
+  background:var(--card);border:1px solid var(--bd);border-radius:var(--r);
+  position:relative;overflow:hidden;
   transition:border-color .2s,box-shadow .2s;
 }
-.gpu-card:hover{border-color:var(--border-hi);box-shadow:var(--glow)}
+.flag-card:hover,.work-card:hover{border-color:var(--bd-hi);box-shadow:var(--glow)}
+.flag-card{min-height:200px}
+.card-content{position:relative;z-index:1;padding:20px}
+.flag-card .card-content{padding:22px}
+
+/* ── Background sparkline canvas ────────────────────────────────────── */
+.sparkline-bg{
+  position:absolute;inset:0;width:100%!important;height:100%!important;
+  opacity:.13;pointer-events:none;z-index:0;
+}
 
 .card-header{margin-bottom:14px}
-.gpu-name{
-  font-size:1.05rem;font-weight:700;color:var(--text1);
-  line-height:1.2;display:block;
-}
+.gpu-name{font-size:1.1rem;font-weight:700;color:var(--t1);display:block;line-height:1.2}
+.flag-card .gpu-name{font-size:1.25rem}
 
-/* ── Tier blocks ──────────────────────────────────────────────── */
-.tier-blocks{
-  display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;
-  margin-bottom:12px;
+/* ── Tier blocks ────────────────────────────────────────────────────── */
+.tier-blocks{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.tb{
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+  border-radius:10px;padding:10px 10px 9px;display:flex;flex-direction:column;gap:5px;min-width:0;
 }
-.tier-block{
-  background:rgba(255,255,255,.03);
-  border:1px solid rgba(255,255,255,.06);
-  border-radius:10px;padding:10px 10px 9px;
-  display:flex;flex-direction:column;gap:5px;
-  min-width:0;
-}
-.tier-empty{opacity:.45}
+.tb-empty{opacity:.4}
 
 /* Chips */
-.chip{
-  display:inline-block;
-  font-size:.6rem;font-weight:800;letter-spacing:.08em;
-  text-transform:uppercase;border-radius:5px;
-  padding:2px 6px;line-height:1.5;white-space:nowrap;
-}
+.chip{display:inline-block;font-size:.6rem;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;border-radius:5px;padding:2px 6px;line-height:1.5;white-space:nowrap}
 .chip-od      {background:rgba(59,130,246,.15);color:#3B82F6;border:1px solid rgba(59,130,246,.3)}
 .chip-spot    {background:rgba(6,182,212,.15); color:#06B6D4;border:1px solid rgba(6,182,212,.3)}
 .chip-reserved{background:rgba(99,102,241,.15);color:#6366F1;border:1px solid rgba(99,102,241,.3)}
 
-.tier-price{
-  font-size:1.05rem;font-weight:700;color:var(--text1);line-height:1;
-}
-.tier-na{color:var(--text3)}
-.per-hr{font-size:.7rem;font-weight:400;color:var(--text2);margin-left:1px}
-.tier-meta{
-  font-size:.7rem;color:var(--text2);white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;
+.tb-price{font-size:1.05rem;font-weight:700;color:var(--t1);line-height:1}
+.tb-na{color:var(--t3)}
+.per-hr{font-size:.7rem;font-weight:400;color:var(--t2);margin-left:1px}
+.tb-meta{font-size:.7rem;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.var-chip{
+  display:inline-block;margin-left:5px;
+  font-size:.58rem;font-weight:700;padding:1px 5px;border-radius:4px;
+  background:rgba(255,255,255,.08);color:var(--t2);vertical-align:middle;
 }
 
-/* ── Spot discount banner ─────────────────────────────────────── */
+/* Spot banner */
 .spot-banner{
-  background:rgba(6,182,212,.08);
-  border:1px solid rgba(6,182,212,.22);
-  border-radius:8px;padding:5px 12px;
-  font-size:.78rem;font-weight:700;
-  color:var(--cyan);text-align:center;
-  box-shadow:0 0 10px rgba(6,182,212,.12);
-  margin-bottom:12px;
+  background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.22);
+  border-radius:8px;padding:5px 12px;font-size:.78rem;font-weight:700;
+  color:var(--cyan);text-align:center;box-shadow:0 0 10px rgba(6,182,212,.12);
+  margin-bottom:8px;
 }
 
-/* ── Sparkline ────────────────────────────────────────────────── */
-.sparkline-area{
-  height:60px;margin-top:auto;padding-top:4px;
-}
-.sparkline-canvas{display:block;width:100%!important}
-.sparkline-area.building{
-  display:flex;align-items:center;justify-content:center;
-  font-size:.72rem;color:var(--text3);font-style:italic;
-}
+/* History hint */
+.hist-hint{font-size:.7rem;color:var(--t3);font-style:italic;padding-top:4px}
 
-/* ── Bottom two-column layout ─────────────────────────────────── */
-.two-col{
+/* ── Inference compact table ────────────────────────────────────────── */
+.inf-table{border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.inf-header,.inf-row{
   display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:32px;
+  grid-template-columns:130px 1fr 1fr 1fr;
+  gap:0;padding:10px 18px;align-items:center;
 }
+.inf-header{
+  font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--t3);background:rgba(255,255,255,.02);border-bottom:1px solid var(--bd);
+}
+.inf-row{border-bottom:1px solid rgba(255,255,255,.04)}
+.inf-row:last-child{border-bottom:none}
+.inf-row:hover{background:rgba(59,130,246,.04)}
+.inf-gpu{font-weight:700;font-size:.9rem}
+.inf-cell{display:flex;flex-direction:column;gap:2px}
+.inf-price{font-size:.88rem;font-weight:600;color:var(--t1)}
+.inf-meta{font-size:.7rem;color:var(--t2)}
+.inf-na{font-size:.88rem;color:var(--t3)}
+
+/* ── Legacy section ─────────────────────────────────────────────────── */
+#legacy-section{display:none}
+.legacy-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;
+}
+.leg-row{
+  background:var(--card);border:1px solid var(--bd);border-radius:10px;
+  padding:10px 14px;display:flex;flex-direction:column;gap:3px;
+}
+.leg-gpu{font-size:.85rem;font-weight:700;color:var(--t1)}
+.leg-price{font-size:.75rem;color:var(--t2)}
+.show-legacy-btn{
+  background:transparent;border:1px solid var(--bd);border-radius:8px;
+  color:var(--t2);font-size:.78rem;padding:8px 18px;cursor:pointer;
+  transition:border-color .2s,color .2s;margin-bottom:24px;
+}
+.show-legacy-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── Bottom two-col ─────────────────────────────────────────────────── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:32px}
 @media(max-width:900px){.two-col{grid-template-columns:1fr}}
 
-/* ── Biggest movers ───────────────────────────────────────────── */
+/* ── Movers ─────────────────────────────────────────────────────────── */
 .mover-row{
   display:flex;align-items:center;justify-content:space-between;
-  padding:10px 0;border-bottom:1px solid var(--border);
+  padding:10px 0;border-bottom:1px solid var(--bd);
 }
 .mover-row:last-child{border-bottom:none}
-.mover-gpu{font-weight:600;font-size:.9rem;color:var(--text1)}
+.mover-gpu{font-weight:600;font-size:.9rem}
 .mover-trail{display:flex;align-items:center;gap:16px}
-.mover-prices{font-size:.78rem;color:var(--text2)}
+.mover-prices{font-size:.78rem;color:var(--t2)}
 .mover-pct{font-weight:700;font-size:.95rem;min-width:64px;text-align:right}
-.val-up  {color:var(--red)}
-.val-down{color:var(--green)}
-.val-flat{color:var(--text3)}
+.val-up{color:var(--red)}.val-down{color:var(--green)}.val-flat{color:var(--t3)}
 
-/* ── Spread leaders ───────────────────────────────────────────── */
-.spread-row{
-  display:flex;align-items:center;gap:18px;
-  padding:12px 0;border-bottom:1px solid var(--border);
-}
+/* ── Spread leaders ─────────────────────────────────────────────────── */
+.spread-row{display:flex;align-items:center;gap:18px;padding:12px 0;border-bottom:1px solid var(--bd)}
 .spread-row:last-child{border-bottom:none}
 .spread-pct{
-  font-size:1.6rem;font-weight:800;min-width:68px;text-align:right;
+  font-size:1.6rem;font-weight:800;min-width:64px;text-align:right;
   background:linear-gradient(90deg,var(--cyan),var(--accent));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
 }
 .spread-body{display:flex;flex-direction:column;gap:3px;min-width:0}
-.spread-gpu{font-weight:700;font-size:.9rem;color:var(--text1)}
+.spread-gpu{font-weight:700;font-size:.9rem}
 .spread-prices{font-size:.78rem}
-.spread-od{color:var(--text2)}
-.spread-arrow{color:var(--text3);margin:0 3px}
-.spread-sp{color:var(--cyan);font-weight:600}
+.spread-od{color:var(--t2)}.spread-arr{color:var(--t3)}.spread-sp{color:var(--cyan);font-weight:600}
 
-/* ── Misc ─────────────────────────────────────────────────────── */
-.notice-msg{color:var(--text3);font-style:italic;font-size:.88rem;padding:8px 0}
-
-/* ── Footer ───────────────────────────────────────────────────── */
+/* ── Misc ────────────────────────────────────────────────────────────── */
+.notice-msg{color:var(--t3);font-style:italic;font-size:.88rem;padding:8px 0}
 .site-footer{
-  border-top:1px solid var(--border);
-  padding:28px 28px 0;max-width:1600px;margin:0 auto;
-  font-size:.75rem;color:var(--text3);
+  border-top:1px solid var(--bd);padding:28px 28px 0;
+  max-width:1600px;margin:0 auto;font-size:.75rem;color:var(--t3);
   display:flex;justify-content:space-between;align-items:center;
 }
 .site-footer a{color:var(--accent);text-decoration:none}
 </style>
 </head>
 <body>
-
-<header class="site-header">
+<header class="site-hdr">
   <div class="hdr-left">
-    <div class="logo-mark"></div>
+    <div class="logo-dot"></div>
     <div>
       <div class="logo-brand">Atlas GPU Pricing</div>
       <div class="logo-sub">H100 &middot; H200 &middot; B200 &middot; A100 across 14 providers</div>
     </div>
   </div>
-  <div class="hdr-right">
-    <div class="atlas-wordmark">Atlas</div>
+  <div>
+    <div class="atlas-wm">Atlas</div>
     <div class="snap-date">
-      Snapshot 2026-05-10 &middot;
-      <span id="rel-time" data-ts="2026-05-18T19:15:50.419557+00:00">...</span>
+      2026-05-10 &middot; <span id="rel-time" data-ts="2026-05-18T19:32:02.953914+00:00">...</span>
     </div>
   </div>
 </header>
 
 <div class="page">
+  <div class="hero"><div class="stat-pill"><span class="sv kpi">&minus;79.2%</span><span class="sl">Median Spot Discount</span></div>
+<div class="stat-pill"><span class="sv kpi">&minus;90%</span><span class="sl">Max Spread (on-demand vs spot)</span></div>
+<div class="stat-pill"><span class="sv">9</span><span class="sl">Providers tracked</span></div>
+<div class="stat-pill"><span class="sv">21</span><span class="sl">GPU families</span></div>
+<div class="stat-pill"><span class="sv">1</span><span class="sl">Days of history</span></div>
+<div class="stat-pill"><span class="sv">199</span><span class="sl">Price rows</span></div></div>
 
-  <!-- Hero stats -->
-  <div class="hero-stats">
-    <div class="stat-pill"><span class="stat-value">63</span><span class="stat-label">GPU Models</span></div>
-<div class="stat-pill"><span class="stat-value">9</span><span class="stat-label">Providers</span></div>
-<div class="stat-pill"><span class="stat-value">1</span><span class="stat-label">Days of History</span></div>
-<div class="stat-pill"><span class="stat-value">199</span><span class="stat-label">Price Rows</span></div>
-<div class="stat-pill"><span class="stat-value disc">&minus;74.5%</span><span class="stat-label">Median Spot Discount</span></div>
-  </div>
-
-  <!-- GPU pricing matrix -->
-  <section class="section">
+  <section class="sec">
     <div class="sec-hdr">
-      <span class="sec-label">GPU Pricing Matrix</span>
+      <span class="sec-label">Flagship Training</span>
       <div class="sec-rule"></div>
-      <span style="font-size:.72rem;color:var(--text3);white-space:nowrap">
-        on-demand &middot; spot &middot; reserved &middot; min $/GPU/hr
-      </span>
+      <span class="sec-sub">H100 &middot; H200 &middot; B200 &middot; B300 &mdash; all form factors merged</span>
     </div>
-    <div class="gpu-grid">
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">H100 NVL</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$2.4900<span class="per-hr">/hr</span></div><div class="tier-meta">CoreWeave · us-east</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$3.0700<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">H100 PCIe</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$1.9900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$2.3900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">H100 SXM</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$1.9900<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$2.9900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">H200</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$10.0000<span class="per-hr">/hr</span></div><div class="tier-meta">OCI · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">H200 SXM</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$3.5900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$3.9900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">NVIDIA H200 NVL</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.5000<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">B200</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$5.4900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$1.0628<span class="per-hr">/hr</span></div><div class="tier-meta">Vast.ai · ap-northeast</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;80.6%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">B300</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$6.9400<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$7.3900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">A100 40GB</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$1.6500<span class="per-hr">/hr</span></div><div class="tier-meta">CoreWeave · us-east</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">A100 40GB PCIe</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.6000<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">A100 40GB SXM</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$1.0000<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.7167<span class="per-hr">/hr</span></div><div class="tier-meta">AWS · us-east</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;28.3%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">A100 80GB</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$1.1900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.1337<span class="per-hr">/hr</span></div><div class="tier-meta">Vast.ai · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;88.8%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">A100 80GB PCIe</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$1.2500<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">A100 80GB SXM</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.8500<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">L40S</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.4750<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.8600<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">L40</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.6900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.9900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">A40</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.3300<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.4400<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX A4000</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1700<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.2500<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">rtxa4000 pcie 16gb</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.0700<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">A10G</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$1.0060<span class="per-hr">/hr</span></div><div class="tier-meta">AWS · us-east</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.2410<span class="per-hr">/hr</span></div><div class="tier-meta">AWS · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;76.0%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">A10</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$2.0000<span class="per-hr">/hr</span></div><div class="tier-meta">OCI · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">L4</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.2250<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.1039<span class="per-hr">/hr</span></div><div class="tier-meta">AWS · us-east</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;53.8%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">V100 16GB</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.0189<span class="per-hr">/hr</span></div><div class="tier-meta">Vast.ai · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;90.1%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">V100 32GB</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$2.3000<span class="per-hr">/hr</span></div><div class="tier-meta">Paperspace · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">T4</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.3500<span class="per-hr">/hr</span></div><div class="tier-meta">GCP · us-central</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.0894<span class="per-hr">/hr</span></div><div class="tier-meta">AWS · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;74.5%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 2000 Ada</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.2400<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.2400<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 3070</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1300<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 3080</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1000<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.0416<span class="per-hr">/hr</span></div><div class="tier-meta">Vast.ai · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;58.4%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 3090</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1500<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.0756<span class="per-hr">/hr</span></div><div class="tier-meta">Vast.ai · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;49.6%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 4000 Ada</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.2000<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.2600<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 4000 Ada SFF</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1800<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.4400<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 4070 Ti</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.5000<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 4080</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1400<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.5000<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 4090</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.2500<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.1689<span class="per-hr">/hr</span></div><div class="tier-meta">Vast.ai · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;32.4%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 5000 Ada</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.4900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.8300<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 5070</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block tier-empty"><span class="chip chip-od">On-Demand</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.0711<span class="per-hr">/hr</span></div><div class="tier-meta">Vast.ai · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 0/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 5070 Ti</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block tier-empty"><span class="chip chip-od">On-Demand</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.0604<span class="per-hr">/hr</span></div><div class="tier-meta">Vast.ai · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 0/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 5080</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.3900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.5900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 5090</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.6900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.2678<span class="per-hr">/hr</span></div><div class="tier-meta">Vast.ai · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;61.2%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX 6000 Ada</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.3000<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.7356<span class="per-hr">/hr</span></div><div class="tier-meta">Vast.ai · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX A2000</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1200<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.5000<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX A4500</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.2500<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX A5000</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1600<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.2700<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX PRO 4500</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.3400<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.6400<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">RTX4000</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.5100<span class="per-hr">/hr</span></div><div class="tier-meta">Paperspace · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">geforcertx2060super pcie 8gb</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1440<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">geforcertx3070ti pcie 8gb</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.1200<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">geforcertx5090 pcie 32gb</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.4600<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">rtx5000ada pcie 32gb</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.5500<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">rtxa5000 pcie 24gb</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.2100<span class="per-hr">/hr</span></div><div class="tier-meta">TensorDock · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">P100</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$1.2750<span class="per-hr">/hr</span></div><div class="tier-meta">OCI · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">A6000</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.3300<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.4900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">MI300X</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.5000<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod Community · global</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$1.9900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">MI355X</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$8.6000<span class="per-hr">/hr</span></div><div class="tier-meta">OCI · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">NVIDIA P4</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.6000<span class="per-hr">/hr</span></div><div class="tier-meta">GCP · us-central</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">NVIDIA P4 Virtual Workstation</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.8000<span class="per-hr">/hr</span></div><div class="tier-meta">GCP · us-central</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">P4000</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.5100<span class="per-hr">/hr</span></div><div class="tier-meta">Paperspace · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">P5000</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.7800<span class="per-hr">/hr</span></div><div class="tier-meta">Paperspace · unknown</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">PRO 6000 MIG 24GB</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.4900<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">PRO 6000 MIG 48GB</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$1.0000<span class="per-hr">/hr</span></div><div class="tier-meta">RunPod · global</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">g4dn.metal</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$7.8240<span class="per-hr">/hr</span></div><div class="tier-meta">AWS · us-east</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.7824<span class="per-hr">/hr</span></div><div class="tier-meta">AWS · us-west</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;90.0%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">g6.2xlarge</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$0.9776<span class="per-hr">/hr</span></div><div class="tier-meta">AWS · us-east</div></div>
-    <div class="tier-block"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price">$0.1259<span class="per-hr">/hr</span></div><div class="tier-meta">AWS · us-east</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  <div class="spot-banner">Spot discount: &minus;87.1%</div>
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-<div class="gpu-card">
-  <div class="card-header">
-    <span class="gpu-name">p5.4xlarge</span>
-  </div>
-  <div class="tier-blocks">
-    <div class="tier-block"><span class="chip chip-od">On-Demand</span><div class="tier-price">$6.8800<span class="per-hr">/hr</span></div><div class="tier-meta">AWS · us-east</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-spot">Spot / Int.</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-    <div class="tier-block tier-empty"><span class="chip chip-reserved">Reserved</span><div class="tier-price tier-na">—</div><div class="tier-meta">Not available</div></div>
-  </div>
-  
-  <div class="sparkline-area building">Building history&hellip; 1/30 days</div>
-</div>
-    </div>
+    <div class="flag-grid"><div class="flag-card"><div class="card-content"><div class="card-header"><span class="gpu-name">B300</span></div><div class="tier-blocks"><div class="tb"><span class="chip chip-od">On-Demand</span><div class="tb-price">$6.9400<span class="per-hr">/hr</span></div><div class="tb-meta">RunPod Community</div></div><div class="tb"><span class="chip chip-spot">Spot / Int.</span><div class="tb-price">$7.3900<span class="per-hr">/hr</span></div><div class="tb-meta">RunPod</div></div><div class="tb tb-empty"><span class="chip chip-reserved">Reserved</span><div class="tb-price tb-na">—</div><div class="tb-meta">Not available</div></div></div><div class="hist-hint">Building history&hellip; 1/30 days</div></div></div>
+<div class="flag-card"><div class="card-content"><div class="card-header"><span class="gpu-name">B200</span></div><div class="tier-blocks"><div class="tb"><span class="chip chip-od">On-Demand</span><div class="tb-price">$5.4900<span class="per-hr">/hr</span></div><div class="tb-meta">RunPod</div></div><div class="tb"><span class="chip chip-spot">Spot / Int.</span><div class="tb-price">$1.0628<span class="per-hr">/hr</span></div><div class="tb-meta">Vast.ai · ap-northeast</div></div><div class="tb tb-empty"><span class="chip chip-reserved">Reserved</span><div class="tb-price tb-na">—</div><div class="tb-meta">Not available</div></div></div><div class="spot-banner">Spot discount: &minus;80.6%</div><div class="hist-hint">Building history&hellip; 1/30 days</div></div></div>
+<div class="flag-card"><div class="card-content"><div class="card-header"><span class="gpu-name">H200</span></div><div class="tier-blocks"><div class="tb"><span class="chip chip-od">On-Demand</span><div class="tb-price">$0.5000<span class="per-hr">/hr</span></div><div class="tb-meta">RunPod Community<span class="var-chip">NVL</span></div></div><div class="tb"><span class="chip chip-spot">Spot / Int.</span><div class="tb-price">$3.9900<span class="per-hr">/hr</span></div><div class="tb-meta">RunPod<span class="var-chip">SXM</span></div></div><div class="tb tb-empty"><span class="chip chip-reserved">Reserved</span><div class="tb-price tb-na">—</div><div class="tb-meta">Not available</div></div></div><div class="hist-hint">Building history&hellip; 1/30 days</div></div></div>
+<div class="flag-card"><div class="card-content"><div class="card-header"><span class="gpu-name">H100</span></div><div class="tier-blocks"><div class="tb"><span class="chip chip-od">On-Demand</span><div class="tb-price">$1.9900<span class="per-hr">/hr</span></div><div class="tb-meta">RunPod Community<span class="var-chip">PCIe</span></div></div><div class="tb"><span class="chip chip-spot">Spot / Int.</span><div class="tb-price">$2.3900<span class="per-hr">/hr</span></div><div class="tb-meta">RunPod<span class="var-chip">PCIe</span></div></div><div class="tb tb-empty"><span class="chip chip-reserved">Reserved</span><div class="tb-price tb-na">—</div><div class="tb-meta">Not available</div></div></div><div class="hist-hint">Building history&hellip; 1/30 days</div></div></div></div>
   </section>
 
-  <!-- Movers + Spread side by side -->
+  <section class="sec">
+    <div class="sec-hdr">
+      <span class="sec-label">Workhorse</span>
+      <div class="sec-rule"></div>
+      <span class="sec-sub">A100 &middot; L40S &middot; L40 &middot; A40</span>
+    </div>
+    <div class="work-grid"><div class="work-card"><div class="card-content"><div class="card-header"><span class="gpu-name">A100</span></div><div class="tier-blocks"><div class="tb"><span class="chip chip-od">On-Demand</span><div class="tb-price">$0.6000<span class="per-hr">/hr</span></div><div class="tb-meta">TensorDock<span class="var-chip">PCIe</span></div></div><div class="tb"><span class="chip chip-spot">Spot / Int.</span><div class="tb-price">$0.1337<span class="per-hr">/hr</span></div><div class="tb-meta">Vast.ai<span class="var-chip">80GB</span></div></div><div class="tb tb-empty"><span class="chip chip-reserved">Reserved</span><div class="tb-price tb-na">—</div><div class="tb-meta">Not available</div></div></div><div class="spot-banner">Spot discount: &minus;77.7%</div><div class="hist-hint">Building history&hellip; 1/30 days</div></div></div>
+<div class="work-card"><div class="card-content"><div class="card-header"><span class="gpu-name">L40S</span></div><div class="tier-blocks"><div class="tb"><span class="chip chip-od">On-Demand</span><div class="tb-price">$0.4750<span class="per-hr">/hr</span></div><div class="tb-meta">TensorDock</div></div><div class="tb"><span class="chip chip-spot">Spot / Int.</span><div class="tb-price">$0.8600<span class="per-hr">/hr</span></div><div class="tb-meta">RunPod</div></div><div class="tb tb-empty"><span class="chip chip-reserved">Reserved</span><div class="tb-price tb-na">—</div><div class="tb-meta">Not available</div></div></div><div class="hist-hint">Building history&hellip; 1/30 days</div></div></div>
+<div class="work-card"><div class="card-content"><div class="card-header"><span class="gpu-name">L40</span></div><div class="tier-blocks"><div class="tb"><span class="chip chip-od">On-Demand</span><div class="tb-price">$0.6900<span class="per-hr">/hr</span></div><div class="tb-meta">RunPod Community</div></div><div class="tb"><span class="chip chip-spot">Spot / Int.</span><div class="tb-price">$0.9900<span class="per-hr">/hr</span></div><div class="tb-meta">RunPod</div></div><div class="tb tb-empty"><span class="chip chip-reserved">Reserved</span><div class="tb-price tb-na">—</div><div class="tb-meta">Not available</div></div></div><div class="hist-hint">Building history&hellip; 1/30 days</div></div></div>
+<div class="work-card"><div class="card-content"><div class="card-header"><span class="gpu-name">A40</span></div><div class="tier-blocks"><div class="tb"><span class="chip chip-od">On-Demand</span><div class="tb-price">$0.0700<span class="per-hr">/hr</span></div><div class="tb-meta">TensorDock<span class="var-chip">PCIe</span></div></div><div class="tb"><span class="chip chip-spot">Spot / Int.</span><div class="tb-price">$0.2500<span class="per-hr">/hr</span></div><div class="tb-meta">RunPod</div></div><div class="tb tb-empty"><span class="chip chip-reserved">Reserved</span><div class="tb-price tb-na">—</div><div class="tb-meta">Not available</div></div></div><div class="hist-hint">Building history&hellip; 1/30 days</div></div></div></div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-hdr">
+      <span class="sec-label">Inference</span>
+      <div class="sec-rule"></div>
+      <span class="sec-sub">L4 &middot; A10G &middot; A10 &middot; T4 &middot; RTX</span>
+    </div>
+    <div class="inf-table"><div class="inf-header"><span>GPU</span><span>On-Demand</span><span>Spot / Int.</span><span>Reserved</span></div><div class="inf-row"><span class="inf-gpu">L4</span><div class="inf-cell"><span class="inf-price">$0.2250</span><span class="inf-meta">TensorDock</span></div><div class="inf-cell"><span class="inf-price">$0.1039</span><span class="inf-meta">AWS · us-east</span></div><div class="inf-cell"><span class="inf-na">—</span></div></div>
+<div class="inf-row"><span class="inf-gpu">A10G</span><div class="inf-cell"><span class="inf-price">$1.0060</span><span class="inf-meta">AWS · us-east</span></div><div class="inf-cell"><span class="inf-price">$0.2410</span><span class="inf-meta">AWS</span></div><div class="inf-cell"><span class="inf-na">—</span></div></div>
+<div class="inf-row"><span class="inf-gpu">A10</span><div class="inf-cell"><span class="inf-price">$2.0000</span><span class="inf-meta">OCI</span></div><div class="inf-cell"><span class="inf-na">—</span></div><div class="inf-cell"><span class="inf-na">—</span></div></div>
+<div class="inf-row"><span class="inf-gpu">T4</span><div class="inf-cell"><span class="inf-price">$0.3500</span><span class="inf-meta">GCP · us-central</span></div><div class="inf-cell"><span class="inf-price">$0.0894</span><span class="inf-meta">AWS</span></div><div class="inf-cell"><span class="inf-na">—</span></div></div>
+<div class="inf-row"><span class="inf-gpu">RTX</span><div class="inf-cell"><span class="inf-price">$0.1000</span><span class="inf-meta">TensorDock</span></div><div class="inf-cell"><span class="inf-price">$0.0416</span><span class="inf-meta">Vast.ai</span></div><div class="inf-cell"><span class="inf-na">—</span></div></div></div>
+  </section>
+
+  <button class="show-legacy-btn" id="legacy-btn">Show 8 legacy GPUs</button><div id="legacy-section"><div class="legacy-grid"><div class="leg-row"><span class="leg-gpu">MI300X</span><span class="leg-price">OD $0.5000</span><span class="leg-price">Spot $1.9900</span></div>
+<div class="leg-row"><span class="leg-gpu">MI355X</span><span class="leg-price">OD $8.6000</span><span class="leg-price">Spot —</span></div>
+<div class="leg-row"><span class="leg-gpu">P100</span><span class="leg-price">OD $1.2750</span><span class="leg-price">Spot —</span></div>
+<div class="leg-row"><span class="leg-gpu">RTX A2000</span><span class="leg-price">OD $0.1200</span><span class="leg-price">Spot $0.5000</span></div>
+<div class="leg-row"><span class="leg-gpu">RTX A4500</span><span class="leg-price">OD $0.1900</span><span class="leg-price">Spot $0.2500</span></div>
+<div class="leg-row"><span class="leg-gpu">RTX A5000</span><span class="leg-price">OD $0.1600</span><span class="leg-price">Spot $0.2700</span></div>
+<div class="leg-row"><span class="leg-gpu">RTX A6000</span><span class="leg-price">OD $0.3300</span><span class="leg-price">Spot $0.4900</span></div>
+<div class="leg-row"><span class="leg-gpu">V100</span><span class="leg-price">OD $0.1900</span><span class="leg-price">Spot $0.0189</span></div></div></div>
+
   <div class="two-col">
-    <section class="section">
+    <section class="sec">
       <div class="sec-hdr">
         <span class="sec-label">Biggest Movers (7 days)</span>
         <div class="sec-rule"></div>
       </div>
       <p class="notice-msg">Insufficient history (need 7 days, have 1)</p>
     </section>
-
-    <section class="section">
+    <section class="sec">
       <div class="sec-hdr">
         <span class="sec-label">Market Spread Leaders</span>
         <div class="sec-rule"></div>
       </div>
-      <div class="spread-row"><div class="spread-pct">90%</div><div class="spread-body"><div class="spread-gpu">V100 16GB</div><div class="spread-prices"><span class="spread-od">$0.1900 on-demand</span><span class="spread-arrow"> &rarr; </span><span class="spread-sp">$0.0189 spot</span></div></div></div>
-<div class="spread-row"><div class="spread-pct">90%</div><div class="spread-body"><div class="spread-gpu">g4dn.metal</div><div class="spread-prices"><span class="spread-od">$7.8240 on-demand</span><span class="spread-arrow"> &rarr; </span><span class="spread-sp">$0.7824 spot</span></div></div></div>
-<div class="spread-row"><div class="spread-pct">89%</div><div class="spread-body"><div class="spread-gpu">A100 80GB</div><div class="spread-prices"><span class="spread-od">$1.1900 on-demand</span><span class="spread-arrow"> &rarr; </span><span class="spread-sp">$0.1337 spot</span></div></div></div>
-<div class="spread-row"><div class="spread-pct">87%</div><div class="spread-body"><div class="spread-gpu">g6.2xlarge</div><div class="spread-prices"><span class="spread-od">$0.9776 on-demand</span><span class="spread-arrow"> &rarr; </span><span class="spread-sp">$0.1259 spot</span></div></div></div>
-<div class="spread-row"><div class="spread-pct">81%</div><div class="spread-body"><div class="spread-gpu">B200</div><div class="spread-prices"><span class="spread-od">$5.4900 on-demand</span><span class="spread-arrow"> &rarr; </span><span class="spread-sp">$1.0628 spot</span></div></div></div>
+      <div class="spread-row"><div class="spread-pct">90%</div><div class="spread-body"><div class="spread-gpu">V100</div><div class="spread-prices"><span class="spread-od">$0.1900 on-demand</span><span class="spread-arr"> &rarr; </span><span class="spread-sp">$0.0189 spot</span></div></div></div>
+<div class="spread-row"><div class="spread-pct">90%</div><div class="spread-body"><div class="spread-gpu">g4dn.metal</div><div class="spread-prices"><span class="spread-od">$7.8240 on-demand</span><span class="spread-arr"> &rarr; </span><span class="spread-sp">$0.7824 spot</span></div></div></div>
+<div class="spread-row"><div class="spread-pct">89%</div><div class="spread-body"><div class="spread-gpu">A100</div><div class="spread-prices"><span class="spread-od">$1.1900 on-demand</span><span class="spread-arr"> &rarr; </span><span class="spread-sp">$0.1337 spot</span></div></div></div>
+<div class="spread-row"><div class="spread-pct">87%</div><div class="spread-body"><div class="spread-gpu">g6.2xlarge</div><div class="spread-prices"><span class="spread-od">$0.9776 on-demand</span><span class="spread-arr"> &rarr; </span><span class="spread-sp">$0.1259 spot</span></div></div></div>
+<div class="spread-row"><div class="spread-pct">81%</div><div class="spread-body"><div class="spread-gpu">B200</div><div class="spread-prices"><span class="spread-od">$5.4900 on-demand</span><span class="spread-arr"> &rarr; </span><span class="spread-sp">$1.0628 spot</span></div></div></div>
     </section>
   </div>
-
 </div>
 
 <footer class="site-footer">
-  <span>Automated daily scrape via
-    <a href="https://github.com/romaindeniau75-commits/gpu-price-scraper/actions">GitHub Actions</a>
-    &middot; 06:00 UTC &middot; on-demand prices, per GPU, USD
-  </span>
-  <span>Generated 2026-05-18T19:15:50 UTC</span>
+  <span>Automated daily scrape &middot; 06:00 UTC &middot; on-demand prices per GPU, USD
+  &middot; <a href="https://github.com/romaindeniau75-commits/gpu-price-scraper/actions">GitHub Actions</a></span>
+  <span>Generated 2026-05-18T19:32:02 UTC</span>
 </footer>
 
 <script>
-/* Chart.js sparklines --------------------------------------------------- */
-document.querySelectorAll('.sparkline-canvas').forEach(function(canvas) {
-  var raw   = canvas.dataset.series;
-  var color = canvas.dataset.color || '#3B82F6';
+/* ── Background sparklines ─────────────────────────────────────────── */
+document.querySelectorAll('.sparkline-bg').forEach(function(canvas) {
+  var raw = canvas.dataset.series, color = canvas.dataset.color || '#3B82F6';
   if (!raw) return;
-  var series;
-  try { series = JSON.parse(raw); } catch(e) { return; }
-  if (!series.data || series.data.length < 2) return;
-
+  var s; try { s = JSON.parse(raw); } catch(e) { return; }
+  if (!s.data || s.data.length < 2) return;
   new Chart(canvas, {
     type: 'line',
     data: {
-      labels: series.labels,
+      labels: s.labels,
       datasets: [{
-        data:             series.data,
-        borderColor:      color,
-        backgroundColor:  color + '18',
-        borderWidth:      2,
-        pointRadius:      series.data.length <= 8 ? 2 : 0,
-        pointHoverRadius: 4,
-        fill:             true,
-        tension:          0.35,
+        data: s.data, borderColor: color, backgroundColor: color + '30',
+        borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.4,
       }]
     },
     options: {
-      responsive:          true,
-      maintainAspectRatio: false,
-      animation:           { duration: 500 },
-      plugins: {
-        legend:  { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              return '$' + ctx.parsed.y.toFixed(4) + '/hr';
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          display:    series.data.length > 3,
-          grid:       { color: 'rgba(30,45,69,.8)' },
-          ticks: {
-            color:          '#4B5E7A',
-            font:           { size: 9 },
-            maxTicksLimit:  5,
-            maxRotation:    0,
-          }
-        },
-        y: {
-          display: true,
-          grid:    { color: 'rgba(30,45,69,.8)' },
-          ticks: {
-            color:         '#4B5E7A',
-            font:          { size: 9 },
-            maxTicksLimit: 4,
-            callback: function(v) { return '$' + v.toFixed(2); }
-          }
-        }
-      }
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 0 },
+      plugins: { legend: {display:false}, tooltip: {enabled:false} },
+      scales: { x: {display:false}, y: {display:false} }
     }
   });
 });
 
-/* Relative timestamp ---------------------------------------------------- */
+/* ── Legacy toggle ──────────────────────────────────────────────────── */
+var legBtn = document.getElementById('legacy-btn');
+if (legBtn) {
+  legBtn.addEventListener('click', function() {
+    document.getElementById('legacy-section').style.display = 'block';
+    this.style.display = 'none';
+  });
+}
+
+/* ── Relative timestamp ─────────────────────────────────────────────── */
 (function() {
   var el = document.getElementById('rel-time');
   if (!el) return;
   var ts = new Date(el.dataset.ts);
   if (isNaN(ts)) return;
   var mins = Math.round((Date.now() - ts) / 60000);
-  var txt;
-  if (mins < 2)        txt = 'just now';
-  else if (mins < 60)  txt = mins + ' min ago';
-  else if (mins < 1440) txt = Math.round(mins/60) + ' hr ago';
-  else                  txt = Math.round(mins/1440) + ' days ago';
-  el.textContent = txt;
+  el.textContent = mins < 2 ? 'just now'
+    : mins < 60 ? mins + ' min ago'
+    : mins < 1440 ? Math.round(mins/60) + ' hr ago'
+    : Math.round(mins/1440) + ' days ago';
 })();
 </script>
 </body>
