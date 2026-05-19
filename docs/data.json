@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-05-19T19:16:51.389925+00:00",
+  "generated_at": "2026-05-19T19:46:52.141242+00:00",
   "hero": {
     "gpu_count": 21,
     "provider_count": 13,
     "day_count": 3,
-    "total_rows": 722,
+    "total_rows": 725,
     "median_spot_discount": 63.9,
     "latest_date": "2026-05-19"
   },
