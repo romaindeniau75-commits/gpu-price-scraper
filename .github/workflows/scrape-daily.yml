@@ -54,16 +54,30 @@ jobs:
           if [ -n "${{ github.event.inputs.gpu_filter }}" ]; then
             GPU_ARG="--gpu ${{ github.event.inputs.gpu_filter }}"
           fi
+          echo "=== data/ before fetch ==="
+          ls -lh data/ 2>/dev/null || echo "(data/ not found)"
           # Errors and empty-provider warnings are now printed to stderr (always visible).
           python3 -m gpu_scraper.cli fetch --no-filter --save-db $GPU_ARG
-          OBS_ROWS=$(python3 -c "
-          import sqlite3
-          con = sqlite3.connect('data/gpu_prices.db')
-          run = con.execute(\"SELECT id, total_offers FROM scrape_runs ORDER BY started_at DESC LIMIT 1\").fetchone()
-          if run: print(f'latest run {run[0][:8]}: {run[1]} observations')
-          else: print('no scrape run found')
-          ")
-          echo "Observations DB: $OBS_ROWS"
+          echo "=== data/ after fetch ==="
+          ls -lh data/ 2>/dev/null || echo "(data/ not found)"
+          # Diagnostic: report the latest scrape run — non-fatal so a bad DB never
+          # blocks the snapshot step that has its own validation.
+          python3 - <<'PYEOF' || true
+          import sqlite3, sys
+          try:
+              con = sqlite3.connect('data/gpu_prices.db')
+              tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+              print(f"gpu_prices.db tables: {tables}")
+              if 'scrape_runs' in tables:
+                  run = con.execute("SELECT id, total_offers FROM scrape_runs ORDER BY started_at DESC LIMIT 1").fetchone()
+                  if run:
+                      print(f"Latest run {run[0][:8]}: {run[1]} observations")
+                  else:
+                      print("scrape_runs table exists but is empty")
+              con.close()
+          except Exception as e:
+              print(f"WARNING: could not inspect gpu_prices.db: {e}", file=sys.stderr)
+          PYEOF
 
       - name: Save daily snapshot to price history
         # This step is the authoritative writer for pricing_history.db.
