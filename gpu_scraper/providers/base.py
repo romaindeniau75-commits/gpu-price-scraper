@@ -50,14 +50,21 @@ class BaseProvider(ABC):
 
     async def fetch(self) -> list[GPUOffer]:
         """Public entry point — isolates failures so other providers keep running."""
+        import sys as _sys
         try:
             offers = await self._scrape()
             logger.info("[%s] fetched %d offers", self.name, len(offers))
             return offers
         except httpx.TimeoutException:
-            logger.warning("[%s] request timed out", self.name)
+            msg = f"[{self.name}] request timed out"
+            logger.warning(msg)
+            print(msg, file=_sys.stderr)
         except httpx.HTTPStatusError as exc:
-            logger.warning("[%s] HTTP %s: %s", self.name, exc.response.status_code, exc.request.url)
+            msg = f"[{self.name}] HTTP {exc.response.status_code}: {exc.request.url}"
+            logger.warning(msg)
+            print(msg, file=_sys.stderr)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("[%s] unexpected error: %s: %s", self.name, type(exc).__name__, exc)
+            msg = f"[{self.name}] unexpected error: {type(exc).__name__}: {exc}"
+            logger.warning(msg)
+            print(msg, file=_sys.stderr)
         return []

@@ -70,8 +70,21 @@ async def run_all_providers(
             msg = f"{type(result).__name__}: {result}"
             errors[instance.name] = msg
             console.print(f"[red]✗ {instance.name}:[/red] {msg}", highlight=False)
+            print(f"PROVIDER_ERROR [{instance.name}]: {msg}", file=sys.stderr)
         else:
+            if not result:
+                # Providers swallow exceptions internally; an empty list here
+                # means the provider's _scrape() failed silently. Log to stderr
+                # so CI logs capture it without --verbose.
+                print(f"PROVIDER_EMPTY [{instance.name}]: returned 0 offers", file=sys.stderr)
             offers.extend(result)
+
+    if not offers:
+        print(
+            f"FETCH_SUMMARY: 0 offers total from {len(instances)} providers "
+            f"(errors: {list(errors.keys()) or 'none visible — check PROVIDER_EMPTY lines above'})",
+            file=sys.stderr,
+        )
 
     for p in instances:
         await p.close()

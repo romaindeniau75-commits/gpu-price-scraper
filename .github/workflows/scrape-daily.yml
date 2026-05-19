@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       gpu_filter:
-        description: "GPU family filter (leave empty for H100 + A100)"
+        description: "GPU family filter (leave empty for all GPUs)"
         required: false
         default: ""
 
@@ -25,8 +25,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Use a PAT if you need to push back to a protected branch;
-          # GITHUB_TOKEN is enough for unprotected main.
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python 3.11
@@ -56,8 +54,51 @@ jobs:
           if [ -n "${{ github.event.inputs.gpu_filter }}" ]; then
             GPU_ARG="--gpu ${{ github.event.inputs.gpu_filter }}"
           fi
+          # Errors and empty-provider warnings are now printed to stderr (always visible).
           python3 -m gpu_scraper.cli fetch --no-filter --save-db $GPU_ARG
-          echo "Snapshot rows: $(python3 -c "from gpu_scraper.storage import HistoryDatabase; print(HistoryDatabase('data/pricing_history.db').row_count())")"
+          OBS_ROWS=$(python3 -c "
+          import sqlite3
+          con = sqlite3.connect('data/gpu_prices.db')
+          run = con.execute(\"SELECT id, total_offers FROM scrape_runs ORDER BY started_at DESC LIMIT 1\").fetchone()
+          if run: print(f'latest run {run[0][:8]}: {run[1]} observations')
+          else: print('no scrape run found')
+          ")
+          echo "Observations DB: $OBS_ROWS"
+
+      - name: Save daily snapshot to price history
+        # This step is the authoritative writer for pricing_history.db.
+        # It reads directly from gpu_prices.db (populated by the fetch step above)
+        # and writes to pricing_history.db with an explicit WAL checkpoint so that
+        # git add picks up the changes (WAL pages live outside the main .db file
+        # until checkpointed, which means git would otherwise miss them).
+        run: |
+          python3 - <<'PYEOF'
+          import sqlite3, sys
+          from datetime import datetime, timezone
+          from gpu_scraper.storage import HistoryDatabase
+
+          today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+          print(f'Saving snapshot for {today}')
+
+          hdb = HistoryDatabase('data/pricing_history.db')
+          hdb.init()
+          try:
+              count = hdb.save_snapshot_from_observations('data/gpu_prices.db', today)
+              print(f'Snapshot saved: {count} rows for {today}')
+          except RuntimeError as e:
+              print(f'ERROR: {e}', file=sys.stderr)
+              sys.exit(1)
+          PYEOF
+
+      - name: Validate snapshot row count
+        run: |
+          ROWS_TODAY=$(sqlite3 data/pricing_history.db \
+            "SELECT COUNT(*) FROM price_history WHERE snapshot_date = date('now');")
+          if [ "$ROWS_TODAY" -eq 0 ]; then
+            echo "::error::No rows inserted for today's snapshot — check provider errors above"
+            exit 1
+          fi
+          echo "✓ $ROWS_TODAY rows for $(date -u +%Y-%m-%d) in price_history"
 
       - name: Generate GitHub Pages dashboard
         run: python3 scripts/generate_dashboard.py

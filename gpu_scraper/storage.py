@@ -474,8 +474,6 @@ class HistoryDatabase:
             return 0
 
         with self._conn() as con:
-            # INSERT OR REPLACE: if a duplicate unique key already exists,
-            # keep the new row only if the new price is lower.
             con.executemany(
                 """
                 INSERT INTO price_history
@@ -490,7 +488,100 @@ class HistoryDatabase:
                 rows,
             )
 
+        # Force WAL checkpoint so the main DB file contains the new rows before
+        # any external tool (git, backup, etc.) reads it.
+        self._wal_checkpoint()
         return len(rows)
+
+    def _wal_checkpoint(self) -> None:
+        """Merge WAL into the main database file (TRUNCATE mode clears the WAL)."""
+        with self._conn() as con:
+            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+    def save_snapshot_from_observations(
+        self,
+        observations_db_path: str,
+        snapshot_date: Optional[str] = None,
+    ) -> int:
+        """Read the latest complete scrape run from gpu_prices.db and persist to price_history.
+
+        This is the authoritative path used by the CI workflow step.  It is
+        independent of the CLI so it works even when the CLI's rich-console
+        code path fails silently.
+
+        Returns
+        -------
+        Number of rows inserted / updated.
+        Raises RuntimeError if no scrape run for today is found.
+        """
+        import sqlite3 as _sq3  # local import — avoid circular deps if file is imported early
+
+        date = snapshot_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        obs_con = _sq3.connect(observations_db_path)
+        obs_con.row_factory = _sq3.Row
+        try:
+            run = obs_con.execute(
+                """
+                SELECT id, total_offers
+                FROM   scrape_runs
+                WHERE  date(started_at) = ?
+                ORDER  BY started_at DESC
+                LIMIT  1
+                """,
+                (date,),
+            ).fetchone()
+            if not run:
+                raise RuntimeError(
+                    f"No scrape run found for {date} in {observations_db_path}"
+                )
+            run_id     = run["id"]
+            run_offers = run["total_offers"] or 0
+            print(f"[history] run {run_id[:8]} — {run_offers} raw offers recorded")
+
+            rows_data = obs_con.execute(
+                """
+                SELECT provider, gpu_model_normalized  AS gpu_model,
+                       region_canonical, availability_tier,
+                       price_per_gpu_hour, commitment_term
+                FROM   gpu_price_observations
+                WHERE  scrape_run_id   = ?
+                  AND  scrape_success  = 1
+                  AND  price_per_gpu_hour > 0
+                  AND  availability_status = 1
+                """,
+                (run_id,),
+            ).fetchall()
+        finally:
+            obs_con.close()
+
+        if not rows_data:
+            raise RuntimeError(
+                f"Run {run_id[:8]} has 0 valid observations in {observations_db_path}"
+            )
+
+        insert_rows = [
+            (date, r["provider"], r["gpu_model"], r["region_canonical"],
+             r["availability_tier"], r["price_per_gpu_hour"], r["commitment_term"] or "")
+            for r in rows_data
+        ]
+        print(f"[history] inserting {len(insert_rows)} rows for {date}")
+        with self._conn() as con:
+            con.executemany(
+                """
+                INSERT INTO price_history
+                    (snapshot_date, provider, gpu_model, region_canonical,
+                     availability_tier, price_per_gpu_hour, commitment_term)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (snapshot_date, provider, gpu_model, region_canonical, availability_tier)
+                DO UPDATE SET
+                    price_per_gpu_hour = MIN(price_per_gpu_hour, excluded.price_per_gpu_hour),
+                    commitment_term    = excluded.commitment_term
+                """,
+                insert_rows,
+            )
+        self._wal_checkpoint()
+        print(f"[history] done — {len(insert_rows)} rows for {date}")
+        return len(insert_rows)
 
     def get_history(
         self,
