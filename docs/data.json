@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-05-19T19:46:52.141242+00:00",
+  "generated_at": "2026-05-19T20:14:06.140051+00:00",
   "hero": {
-    "gpu_count": 21,
+    "gpu_count": 20,
     "provider_count": 13,
     "day_count": 3,
     "total_rows": 725,
-    "median_spot_discount": 63.9,
+    "median_spot_discount": 65.0,
     "latest_date": "2026-05-19"
   },
   "movers": {
@@ -47,18 +47,18 @@
   "flagship_trend": [
     {
       "date": "2026-05-10",
-      "avg_on_demand": 5.2877,
-      "avg_spot": 3.5956
+      "avg_on_demand": 6.0753,
+      "avg_spot": 4.1055
     },
     {
       "date": "2026-05-18",
-      "avg_on_demand": 4.4325,
-      "avg_spot": 3.0657
+      "avg_on_demand": 5.1317,
+      "avg_spot": 3.4447
     },
     {
       "date": "2026-05-19",
-      "avg_on_demand": 4.5385,
-      "avg_spot": 3.0197
+      "avg_on_demand": 5.2239,
+      "avg_spot": 3.4259
     }
   ]
 }

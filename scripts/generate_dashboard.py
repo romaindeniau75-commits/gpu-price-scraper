@@ -41,6 +41,10 @@ DOCS_DIR   = ROOT / "docs"
 
 # Ordered (pattern, base_name) — first match wins; order is critical!
 _MERGE_PATTERNS: list[tuple[str, str]] = [
+    # Integrated systems must be matched BEFORE their GPU-only counterparts
+    ("GB300", "GB300"),  # Grace Blackwell 300 — CPU+GPU integrated system
+    ("GH200", "GH200"),  # Grace Hopper 200 — CPU+GPU integrated system (future)
+    ("MI300A","MI300A"), # AMD APU integrated system (future)
     ("B300",  "B300"),   ("B200",  "B200"),
     ("H200",  "H200"),   ("H100",  "H100"),
     ("A100",  "A100"),
@@ -58,6 +62,7 @@ _MERGE_PATTERNS: list[tuple[str, str]] = [
 ]
 
 _FLAGSHIP_BASES  = frozenset({"H100", "H200", "B200", "B300"})
+_SYSTEMS_BASES   = frozenset({"GB300", "GH200", "MI300A"})   # CPU+GPU integrated systems
 _WORKHORSE_BASES = frozenset({"A100", "L40S", "L40", "A40"})
 _INFERENCE_BASES = frozenset({"L4", "A10G", "A10", "T4"})
 _LEGACY_BASES    = frozenset({
@@ -65,6 +70,18 @@ _LEGACY_BASES    = frozenset({
     "RTX A6000", "RTX A5000", "RTX A4500", "RTX A4000", "RTX A2000",
 })
 _RTX_CATCH_ALL   = "RTX"
+
+# Models that are commercially available but pre-GA.
+# Pricing may be volatile and provider coverage limited.
+EARLY_ACCESS_MODELS: dict[str, str] = {
+    "B300":  "Early access · pre-GA pricing",
+    "GB300": "Early access · Grace Blackwell system",
+}
+
+# A GPU base must appear at ≥ this many distinct providers in the last 7 days
+# to be shown in flagship / workhorse / inference (guards against phantom models).
+# Systems section is curated and exempt from this filter.
+MIN_PROVIDERS_LAST_7D: int = 2
 
 # Providers whose RTX gaming cards count as datacenter inference
 _DC_PROVIDERS = frozenset({
@@ -95,8 +112,9 @@ _PLAUSIBILITY_BOUNDS: dict[str, tuple[float, float]] = {
     "P100":    (0.10,  2.50),
 }
 
-# Flagship GPU families included in the trend chart (after form-factor merge)
-FLAGSHIP_TREND_MODELS = {"H100", "H200", "B200"}
+# Flagship GPU families included in the trend chart (after form-factor merge).
+# B300 is included: it has confirmed GA availability across 3+ providers.
+FLAGSHIP_TREND_MODELS = {"H100", "H200", "B200", "B300"}
 
 _CARD_COLORS = [
     "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6",
@@ -104,10 +122,11 @@ _CARD_COLORS = [
     "#14B8A6", "#E879F9",
 ]
 
-# Flagship sort: within flagship, prefer bigger/newer GPUs
+# Sort orders within each section
 _FLAG_ORDER = ["B300", "B200", "H200", "H100"]
 _WORK_ORDER = ["A100", "L40S", "L40", "A40"]
 _INF_ORDER  = ["L4", "A10G", "A10", "T4", "RTX"]
+_SYS_ORDER  = ["GB300", "GH200", "MI300A"]
 
 
 # ---------------------------------------------------------------------------
@@ -152,6 +171,7 @@ def _gpu_variant(gpu_model: str) -> str:
 
 def _gpu_tier(base: Optional[str], providers: frozenset[str]) -> Optional[str]:
     if base is None:                     return None
+    if base in _SYSTEMS_BASES:           return "systems"
     if base in _FLAGSHIP_BASES:          return "flagship"
     if base in _WORKHORSE_BASES:         return "workhorse"
     if base in _INFERENCE_BASES:         return "inference"
@@ -248,6 +268,15 @@ def _build_raw_offers(con: sqlite3.Connection, ld: str) -> list[dict]:
                     f"(median=${med:.4f}, 3× threshold=${threshold:.4f})"
                 )
                 continue
+
+        # 3 — Informational note: OCI B300/GB300 runs ~2× peers (OCI premium pricing).
+        #     The spread is within plausibility bounds; no exclusion, just visibility.
+        if o["provider"] == "OCI" and base in {"B300", "GB300"} and price >= 10.0:
+            print(
+                f"INFO OCI {base} ${price:.2f}/hr — OCI premium pricing "
+                f"(~2× peers ~$7/hr); within plausibility bounds [{base}], keeping."
+            )
+
         clean.append(o)
 
     return clean
@@ -255,10 +284,15 @@ def _build_raw_offers(con: sqlite3.Connection, ld: str) -> list[dict]:
 
 def _build_gpu_groups(
     offers: list[dict],
-) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
+    qualifying_bases: Optional[frozenset] = None,
+) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict]]:
     """
-    Aggregate offers by base GPU family, returning four sorted lists:
-    (flagship, workhorse, inference, legacy)
+    Aggregate offers by base GPU family, returning five sorted lists:
+    (flagship, workhorse, inference, legacy, systems)
+
+    qualifying_bases: frozenset of base GPU names that pass the
+    MIN_PROVIDERS_LAST_7D filter.  Applied to flagship/workhorse/inference
+    only; legacy and systems are exempt.  Pass None to skip filtering.
     """
     # Step 1 — inventory which providers offer each base GPU
     base_providers: dict[str, set[str]] = defaultdict(set)
@@ -294,12 +328,26 @@ def _build_gpu_groups(
             }
 
     # Step 3 — classify into tiers and sort
-    buckets: dict[str, list[dict]] = {"flagship": [], "workhorse": [], "inference": [], "legacy": []}
+    buckets: dict[str, list[dict]] = {
+        "flagship": [], "workhorse": [], "inference": [], "legacy": [], "systems": [],
+    }
 
     for base, slots in base_slots.items():
         providers = frozenset(base_providers[base])
         tier_cls  = _gpu_tier(base, providers)
         if tier_cls is None:
+            continue
+
+        # Min-providers guard: flagship/workhorse/inference only (systems + legacy exempt)
+        if (
+            qualifying_bases is not None
+            and tier_cls not in ("systems", "legacy")
+            and base not in qualifying_bases
+        ):
+            print(
+                f"INFO min-providers excluded: {base} "
+                f"(< {MIN_PROVIDERS_LAST_7D} providers in last 7 days)"
+            )
             continue
 
         od = slots.get("on_demand")
@@ -324,6 +372,7 @@ def _build_gpu_groups(
         (_FLAG_ORDER, "flagship"),
         (_WORK_ORDER, "workhorse"),
         (_INF_ORDER,  "inference"),
+        (_SYS_ORDER,  "systems"),
     ]:
         buckets[bucket_key].sort(key=lambda g: _tier_order(g["base_gpu"], order_list))
     # Legacy: alphabetical
@@ -334,6 +383,7 @@ def _build_gpu_groups(
         buckets["workhorse"],
         buckets["inference"],
         buckets["legacy"],
+        buckets["systems"],
     )
 
 
@@ -377,6 +427,7 @@ def _build_hero_stats(
     workhorse: list[dict],
     inference: list[dict],
     legacy: list[dict],
+    systems: list[dict] = [],
 ) -> dict:
     row = con.execute(
         """
@@ -392,10 +443,10 @@ def _build_hero_stats(
         (ld,),
     ).fetchone()[0]
 
-    # Median spot discount from flagship + workhorse (the cards that matter for the pitch)
+    # Median spot discount from flagship + workhorse + systems
     discounts = [
         g["spot_discount_pct"]
-        for g in (flagship + workhorse)
+        for g in (flagship + workhorse + systems)
         if g["spot_discount_pct"] is not None
     ]
     median_disc: Optional[float] = None
@@ -407,7 +458,7 @@ def _build_hero_stats(
             1,
         )
 
-    total_bases = sum(len(b) for b in [flagship, workhorse, inference, legacy])
+    total_bases = sum(len(b) for b in [flagship, workhorse, inference, legacy, systems])
 
     return {
         "gpu_count":            total_bases,
@@ -484,6 +535,29 @@ def _build_spread_leaders(con: sqlite3.Connection) -> list[dict]:
         (ld, ld),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def _build_min_provider_bases(
+    con: sqlite3.Connection,
+    min_providers: int = MIN_PROVIDERS_LAST_7D,
+) -> frozenset:
+    """Return base GPU names with ≥ min_providers distinct providers in last 7 days."""
+    rows = con.execute(
+        """
+        SELECT gpu_model, COUNT(DISTINCT provider) AS n
+        FROM   price_history
+        WHERE  snapshot_date >= date('now', '-7 days')
+        GROUP  BY gpu_model
+        HAVING n >= ?
+        """,
+        (min_providers,),
+    ).fetchall()
+    result: set[str] = set()
+    for r in rows:
+        base = _gpu_base(r["gpu_model"])
+        if base:
+            result.add(base)
+    return frozenset(result)
 
 
 def compute_flagship_trend(con: sqlite3.Connection) -> list[dict]:
@@ -592,11 +666,17 @@ def _card_html(g: dict, idx: int, card_cls: str) -> str:
             f'<div class="hist-hint">Building history&hellip; {len(prices)}/30 days</div>'
         )
 
+    # Early-access badge (B300, GB300 …)
+    ea_badge = ""
+    if gpu in EARLY_ACCESS_MODELS:
+        desc = EARLY_ACCESS_MODELS[gpu]
+        ea_badge = f'<span class="ea-badge" title="{desc}">EARLY ACCESS</span>'
+
     return (
         f'<div class="{card_cls}">'
         f"{bg_layer}"
         f'<div class="card-content">'
-        f'<div class="card-header"><span class="gpu-name">{gpu}</span></div>'
+        f'<div class="card-header"><span class="gpu-name">{gpu}</span>{ea_badge}</div>'
         f'<div class="tier-blocks">{od_html}{sp_html}{rv_html}</div>'
         f"{banner}"
         f"{hist_hint}"
@@ -784,9 +864,18 @@ html{
   opacity:.13;pointer-events:none;z-index:0;
 }
 
-.card-header{margin-bottom:14px}
-.gpu-name{font-size:1.1rem;font-weight:700;color:var(--t1);display:block;line-height:1.2}
+.card-header{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:10px;margin-bottom:14px;
+}
+.gpu-name{font-size:1.1rem;font-weight:700;color:var(--t1);line-height:1.2}
 .flag-card .gpu-name{font-size:1.25rem}
+.ea-badge{
+  background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);
+  color:#F59E0B;border-radius:6px;padding:2px 8px;
+  font-size:10px;letter-spacing:1px;text-transform:uppercase;font-weight:600;
+  white-space:nowrap;flex-shrink:0;cursor:default;line-height:1.6;
+}
 
 /* ── Tier blocks ────────────────────────────────────────────────────── */
 .tier-blocks{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
@@ -1076,6 +1165,29 @@ if (legBtn) {
 """
 
 
+def _render_systems_section_html(systems: list[dict]) -> str:
+    """HTML for the Systems (CPU+GPU integrated) section.
+
+    Renders only when there is at least one system in the data.
+    GH200 and MI300A cards will appear automatically once they enter the DB.
+    """
+    if not systems:
+        return ""
+    cards = "\n".join(_card_html(g, i, "flag-card") for i, g in enumerate(systems))
+    return (
+        f'<section class="sec">\n'
+        f'<div class="sec-hdr">'
+        f'<span class="sec-label">Systems (CPU+GPU Integrated)</span>'
+        f'<div class="sec-rule"></div>'
+        f'<span class="sec-sub">'
+        f'GB300 &middot; GH200 &middot; MI300A &mdash; full server-class'
+        f'</span>'
+        f'</div>\n'
+        f'<div class="flag-grid">{cards}</div>\n'
+        f'</section>'
+    )
+
+
 def _render_flagship_trend_html(trend: list[dict]) -> str:
     """Render the flagship price trend section HTML."""
     have_chart = len(trend) >= 2
@@ -1154,7 +1266,7 @@ def _render_flagship_trend_html(trend: list[dict]) -> str:
         f'<span class="sec-label">Flagship GPU Price Trend</span>'
         f'<div class="sec-rule"></div>'
         f'<span class="sec-sub">'
-        f'H100 &middot; H200 &middot; B200 &mdash; daily average across all providers'
+        f'H100 &middot; H200 &middot; B200 &middot; B300 &mdash; daily average across all providers'
         f'</span>'
         f'</div>\n'
         f'<div class="trend-card">\n'
@@ -1179,6 +1291,7 @@ def generate_html(
     leaders:  list[dict],
     gen_ts:   str,
     flagship_trend: list[dict] = [],
+    systems:  list[dict] = [],
 ) -> str:
     snap_date = hero.get("latest_date") or "N/A"
     day_count = hero.get("day_count", 0)
@@ -1253,6 +1366,7 @@ def generate_html(
     movers_html  = _render_movers(movers)
     leaders_html = _render_spread_leaders(leaders)
     trend_html   = _render_flagship_trend_html(flagship_trend)
+    systems_html = _render_systems_section_html(systems)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -1295,6 +1409,8 @@ def generate_html(
     </div>
     {flag_html}
   </section>
+
+  {systems_html}
 
   <section class="sec">
     <div class="sec-hdr">
@@ -1360,14 +1476,17 @@ def main() -> None:
     if not ld:
         print("WARNING: price_history is empty — generating empty dashboard.")
 
+    qualifying_bases = _build_min_provider_bases(con)
     offers   = _build_raw_offers(con, ld) if ld else []
-    flagship, workhorse, inference, legacy = _build_gpu_groups(offers)
+    flagship, workhorse, inference, legacy, systems = _build_gpu_groups(
+        offers, qualifying_bases=qualifying_bases
+    )
 
     sl = _build_sparklines(con)
-    for group_list in (flagship, workhorse, inference, legacy):
+    for group_list in (flagship, workhorse, inference, legacy, systems):
         _attach_sparklines(group_list, sl)
 
-    hero            = _build_hero_stats(con, flagship, workhorse, inference, legacy)
+    hero            = _build_hero_stats(con, flagship, workhorse, inference, legacy, systems)
     movers          = _build_movers(con, hero["day_count"])
     leaders         = _build_spread_leaders(con)
     flagship_trend  = compute_flagship_trend(con)
@@ -1377,6 +1496,7 @@ def main() -> None:
         hero, flagship, workhorse, inference, legacy,
         movers, leaders, gen_ts,
         flagship_trend=flagship_trend,
+        systems=systems,
     )
 
     (DOCS_DIR / "index.html").write_text(html)
@@ -1393,11 +1513,12 @@ def main() -> None:
 
     print(f"docs/index.html  {len(html):,} chars")
     print(f"  Flagship  : {[g['base_gpu'] for g in flagship]}")
+    print(f"  Systems   : {[g['base_gpu'] for g in systems]}")
     print(f"  Workhorse : {[g['base_gpu'] for g in workhorse]}")
     print(f"  Inference : {[g['base_gpu'] for g in inference]}")
     print(f"  Legacy    : {[g['base_gpu'] for g in legacy]}")
     print(f"  Day count : {hero['day_count']}")
-    print(f"  Outliers  : see WARNING lines above")
+    print(f"  Outliers  : see WARNING/INFO lines above")
 
 
 if __name__ == "__main__":

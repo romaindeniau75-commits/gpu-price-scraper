@@ -26,8 +26,8 @@ _NAME_GPU: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bH200\b",          re.I), "H200"),
     (re.compile(r"\bH100T\b",         re.I), "H100 SXM"),
     (re.compile(r"\bH100\b",          re.I), "H100 SXM"),
-    (re.compile(r"\bGB300\b",         re.I), "B300"),
-    (re.compile(r"\bGB200\b",         re.I), "H100 SXM"),   # Grace Blackwell node
+    (re.compile(r"\bGB300\b",         re.I), "GB300"),        # Grace Blackwell 300 system
+    (re.compile(r"\bGB200\b",         re.I), "H100 SXM"),   # Grace Blackwell node (closest equiv.)
     (re.compile(r"\bB300\b",          re.I), "B300"),
     (re.compile(r"\bB200\b",          re.I), "B200"),
     (re.compile(r"\bMI355X\b",        re.I), "MI355X"),
