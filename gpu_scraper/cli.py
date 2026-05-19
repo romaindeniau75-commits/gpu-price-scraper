@@ -525,3 +525,7 @@ def list_providers() -> None:
     for row in rows:
         t.add_row(*row)
     console.print(t)
+
+
+if __name__ == "__main__":
+    main()
