@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-05-19T20:14:06.140051+00:00",
+  "generated_at": "2026-05-20T09:46:04.943507+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 13,
-    "day_count": 3,
-    "total_rows": 725,
+    "day_count": 4,
+    "total_rows": 984,
     "median_spot_discount": 65.0,
-    "latest_date": "2026-05-19"
+    "latest_date": "2026-05-20"
   },
   "movers": {
     "insufficient": true,
-    "have_days": 3
+    "have_days": 4
   },
   "spread_leaders": [
     {
@@ -26,12 +26,6 @@
       "spread_pct": 87.1
     },
     {
-      "gpu_model": "V100 16GB",
-      "od_price": 0.1381,
-      "sp_price": 0.0209,
-      "spread_pct": 84.9
-    },
-    {
       "gpu_model": "A10G",
       "od_price": 1.006,
       "sp_price": 0.241,
@@ -42,6 +36,12 @@
       "od_price": 0.35,
       "sp_price": 0.0894,
       "spread_pct": 74.5
+    },
+    {
+      "gpu_model": "L4",
+      "od_price": 0.39,
+      "sp_price": 0.1039,
+      "spread_pct": 73.4
     }
   ],
   "flagship_trend": [
@@ -59,6 +59,11 @@
       "date": "2026-05-19",
       "avg_on_demand": 5.2239,
       "avg_spot": 3.4259
+    },
+    {
+      "date": "2026-05-20",
+      "avg_on_demand": 5.2239,
+      "avg_spot": 3.5347
     }
   ]
 }
