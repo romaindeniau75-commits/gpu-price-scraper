@@ -143,7 +143,7 @@ _PLAUSIBILITY_BOUNDS: dict[str, tuple[float, float]] = {
     "B300":    (5.00, 30.00),
     "B200":    (5.00, 30.00),
     "H200":    (2.50, 20.00),
-    "H100":    (1.00, 12.00),
+    "H100":    (1.50, 15.00),  # wide ceiling captures hyperscalers (AWS/Azure ~$10-12/hr)
     "A100":    (0.80,  8.00),
     "L40S":    (0.50,  6.00),
     "L40":     (0.40,  5.00),
@@ -302,9 +302,11 @@ def _build_raw_offers(con: sqlite3.Connection, ld: str) -> list[dict]:
             continue
 
         # 2 — Statistical outlier filter: >3× median within same (model, tier)
+        # H100 is exempt: it has a legitimately wide spread ($2 neocloud → $12 hyperscaler)
+        # and the 3× filter incorrectly drops premium-priced providers.
         key   = (o["gpu_model"], o["availability_tier"])
         group = price_groups[key]
-        if len(group) >= 2:
+        if base != "H100" and len(group) >= 2:
             med       = _stats_median(group)
             threshold = 3.0 * med
             if price > threshold:
@@ -647,46 +649,104 @@ def _build_min_provider_bases(
     return frozenset(result)
 
 
-def compute_flagship_trend(con: sqlite3.Connection) -> list[dict]:
-    """Compute per-date average on-demand and spot prices for FLAGSHIP_TREND_MODELS.
+def compute_h100_index(con: sqlite3.Connection) -> list[dict]:
+    """Compute the Atlas H100 Index: per-date average of per-provider minimums.
+
+    Methodology for each date:
+      1. Take the minimum H100 price per (provider, tier) — one price point per cloud.
+      2. Average those per-provider minimums — represents the typical market price.
+    This is more representative than a flat average because it isn't biased by
+    providers that list many H100 variants at similar prices.
+
+    Plausibility bounds applied: $1.50–$15.00 (captures hyperscalers at ~$10-12/hr).
+    No 3× median filter (H100 has a legitimately wide spread neocloud↔hyperscaler).
 
     Returns a list sorted by date:
-      [{"date": "2026-05-10", "avg_on_demand": 3.12, "avg_spot": 1.05}, ...]
-    Prices are plausibility-filtered (same rules as the main display).
+      [{"date": "2026-05-10", "avg_on_demand": 3.12, "n_od": 8,
+                               "avg_spot": 1.05,      "n_sp": 5}, ...]
     """
-    rows = con.execute(
-        """
-        SELECT snapshot_date, gpu_model, availability_tier, price_per_gpu_hour
-        FROM   price_history
-        ORDER  BY snapshot_date
-        """
+    _H100_LO, _H100_HI = _PLAUSIBILITY_BOUNDS["H100"]  # 1.50, 15.00
+
+    all_dates_rows = con.execute(
+        "SELECT DISTINCT snapshot_date FROM price_history ORDER BY snapshot_date"
     ).fetchall()
 
-    date_od: dict[str, list[float]] = defaultdict(list)
-    date_sp: dict[str, list[float]] = defaultdict(list)
-
-    for r in rows:
-        base  = _gpu_base(r["gpu_model"])
-        if base not in FLAGSHIP_TREND_MODELS:
-            continue
-        price = r["price_per_gpu_hour"]
-        tier  = r["availability_tier"]
-        if not _is_plausible(price, base, tier):
-            continue
-        date  = r["snapshot_date"]
-        if tier == "on_demand":
-            date_od[date].append(price)
-        elif tier in _SPOT_TIERS:
-            date_sp[date].append(price)
-
-    all_dates = sorted(set(list(date_od) + list(date_sp)))
     result: list[dict] = []
-    for date in all_dates:
-        od_prices = date_od.get(date, [])
-        sp_prices = date_sp.get(date, [])
+    latest_date = all_dates_rows[-1][0] if all_dates_rows else None
+
+    for (date,) in all_dates_rows:
+        # Per-provider minimum for on-demand
+        od_rows = con.execute(
+            """
+            WITH h100 AS (
+                SELECT provider, price_per_gpu_hour
+                FROM   price_history
+                WHERE  gpu_model LIKE '%H100%'
+                  AND  snapshot_date = ?
+                  AND  availability_tier = 'on_demand'
+                  AND  price_per_gpu_hour BETWEEN ? AND ?
+            )
+            SELECT provider, MIN(price_per_gpu_hour) AS min_price
+            FROM   h100
+            GROUP  BY provider
+            """,
+            (date, _H100_LO, _H100_HI),
+        ).fetchall()
+
+        # Per-provider minimum for spot / interruptible / community
+        sp_rows = con.execute(
+            """
+            WITH h100 AS (
+                SELECT provider, price_per_gpu_hour
+                FROM   price_history
+                WHERE  gpu_model LIKE '%H100%'
+                  AND  snapshot_date = ?
+                  AND  availability_tier IN ('spot', 'interruptible', 'community')
+                  AND  price_per_gpu_hour BETWEEN ? AND ?
+            )
+            SELECT provider, MIN(price_per_gpu_hour) AS min_price
+            FROM   h100
+            GROUP  BY provider
+            """,
+            (date, _H100_LO * 0.30, _H100_HI),  # spot floor at 30% of on-demand floor
+        ).fetchall()
+
+        od_prices = [r[1] for r in od_rows]
+        sp_prices = [r[1] for r in sp_rows]
         avg_od = round(sum(od_prices) / len(od_prices), 4) if od_prices else None
         avg_sp = round(sum(sp_prices) / len(sp_prices), 4) if sp_prices else None
-        result.append({"date": date, "avg_on_demand": avg_od, "avg_spot": avg_sp})
+
+        entry = {
+            "date":         date,
+            "avg_on_demand": avg_od,
+            "avg_spot":      avg_sp,
+            "n_od":          len(od_prices),
+            "n_sp":          len(sp_prices),
+        }
+        result.append(entry)
+
+        # Diagnostic logging for the latest date only
+        if date == latest_date:
+            print(f"H100 Index | snapshot {date}")
+            raw_count = con.execute(
+                "SELECT COUNT(*) FROM price_history WHERE gpu_model LIKE '%H100%' AND snapshot_date = ?",
+                (date,),
+            ).fetchone()[0]
+            print(f"  raw H100 prices in DB      : {raw_count}")
+            plaus_count = con.execute(
+                """SELECT COUNT(*) FROM price_history
+                   WHERE gpu_model LIKE '%H100%' AND snapshot_date = ?
+                     AND price_per_gpu_hour BETWEEN ? AND ?""",
+                (date, _H100_LO, _H100_HI),
+            ).fetchone()[0]
+            print(f"  after plausibility bounds  : {plaus_count}  (${_H100_LO:.2f}–${_H100_HI:.2f})")
+            print(f"  after provider dedup       : on-demand={len(od_prices)}, spot={len(sp_prices)}")
+            if avg_od is not None:
+                print(f"  on-demand: avg=${avg_od:.2f}/hr across {len(od_prices)} providers")
+            if avg_sp is not None:
+                print(f"  spot/community: avg=${avg_sp:.2f}/hr across {len(sp_prices)} providers")
+            if avg_od and avg_sp and avg_od > avg_sp:
+                print(f"  spread: -{(avg_od - avg_sp) / avg_od * 100:.1f}%")
 
     return result
 
@@ -1364,7 +1424,7 @@ def _render_systems_section_html(systems: list[dict]) -> str:
 
 
 def _render_flagship_trend_html(trend: list[dict]) -> str:
-    """Render the flagship price trend section HTML."""
+    """Render the Atlas H100 Index section HTML."""
     have_chart = len(trend) >= 2
 
     if have_chart:
@@ -1395,26 +1455,32 @@ def _render_flagship_trend_html(trend: list[dict]) -> str:
             f'</div>'
         )
 
-    # Mini-stats chips
+    # Mini-stats chips (H100-specific labelling with provider counts)
     stats_parts: list[str] = []
     if trend:
         latest = trend[-1]
-        od = latest.get("avg_on_demand")
-        sp = latest.get("avg_spot")
+        od   = latest.get("avg_on_demand")
+        sp   = latest.get("avg_spot")
+        n_od = latest.get("n_od", 0)
+        n_sp = latest.get("n_sp", 0)
         if od is not None:
             stats_parts.append(
-                f'<div class="trend-stat">Current on-demand avg: '
-                f'<strong>${od:.2f}/hr</strong></div>'
+                f'<div class="trend-stat">H100 on-demand avg: '
+                f'<strong>${od:.2f}/hr</strong>'
+                f'<span style="font-weight:400"> across {n_od} provider{"s" if n_od != 1 else ""}</span>'
+                f'</div>'
             )
         if sp is not None:
             stats_parts.append(
-                f'<div class="trend-stat">Current spot avg: '
-                f'<strong>${sp:.2f}/hr</strong></div>'
+                f'<div class="trend-stat">H100 spot avg: '
+                f'<strong>${sp:.2f}/hr</strong>'
+                f'<span style="font-weight:400"> across {n_sp} provider{"s" if n_sp != 1 else ""}</span>'
+                f'</div>'
             )
         if od and sp and od > 0 and od > sp:
             spread = (od - sp) / od * 100
             stats_parts.append(
-                f'<div class="trend-stat">Current avg spread: '
+                f'<div class="trend-stat">H100 spread: '
                 f'<strong>&minus;{spread:.1f}%</strong></div>'
             )
         # 7-day change chip (only when >= 7 data points)
@@ -1438,10 +1504,10 @@ def _render_flagship_trend_html(trend: list[dict]) -> str:
     return (
         f'<section class="sec" id="flagship-trend-chart">\n'
         f'<div class="sec-hdr">'
-        f'<span class="sec-label">Flagship GPU Price Trend</span>'
+        f'<span class="sec-label">Atlas H100 Index</span>'
         f'<div class="sec-rule"></div>'
         f'<span class="sec-sub">'
-        f'H100 &middot; H200 &middot; B200 &middot; B300 &mdash; daily average across all providers'
+        f'The live benchmark for the most-traded GPU &middot; daily min across all providers'
         f'</span>'
         f'</div>\n'
         f'<div class="trend-card">\n'
@@ -1682,7 +1748,7 @@ def main() -> None:
     hero            = _build_hero_stats(con, flagship, workhorse, inference, legacy, systems)
     movers          = _build_movers(con, hero["day_count"])
     leaders         = _build_spread_leaders(con)
-    flagship_trend  = compute_flagship_trend(con)
+    flagship_trend  = compute_h100_index(con)
     con.close()
 
     html = generate_html(

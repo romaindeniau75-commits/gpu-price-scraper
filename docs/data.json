@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-20T19:01:36.977063+00:00",
+  "generated_at": "2026-05-20T19:21:45.363269+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 12,
@@ -47,23 +47,31 @@
   "flagship_trend": [
     {
       "date": "2026-05-10",
-      "avg_on_demand": 6.0753,
-      "avg_spot": 4.1055
+      "avg_on_demand": 4.664,
+      "avg_spot": 2.7641,
+      "n_od": 5,
+      "n_sp": 3
     },
     {
       "date": "2026-05-18",
-      "avg_on_demand": 5.1317,
-      "avg_spot": 3.4447
+      "avg_on_demand": 3.9487,
+      "avg_spot": 2.1122,
+      "n_od": 8,
+      "n_sp": 5
     },
     {
       "date": "2026-05-19",
-      "avg_on_demand": 5.2239,
-      "avg_spot": 3.4259
+      "avg_on_demand": 4.0112,
+      "avg_spot": 2.1121,
+      "n_od": 8,
+      "n_sp": 5
     },
     {
       "date": "2026-05-20",
-      "avg_on_demand": 5.2239,
-      "avg_spot": 3.5347
+      "avg_on_demand": 4.0112,
+      "avg_spot": 2.2734,
+      "n_od": 8,
+      "n_sp": 4
     }
   ]
 }
