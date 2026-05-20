@@ -78,6 +78,28 @@ EARLY_ACCESS_MODELS: dict[str, str] = {
     "GB300": "Early access · Grace Blackwell system",
 }
 
+# AWS EC2 instance-family prefix → canonical GPU model name.
+# AWS stores instance SKUs (g6.2xlarge, p4d.24xlarge …) as gpu_model in the DB;
+# this table lets us translate them back to real GPU names for display.
+# Longer prefixes MUST come before shorter ones (g6e before g6).
+AWS_SKU_TO_GPU: dict[str, str] = {
+    "g4dn": "T4",
+    "g4ad": "V520",      # AMD Radeon Pro — skip via lookup returning None
+    "g5g":  "T4G",       # Graviton+T4G — skip (non-standard)
+    "g5":   "A10G",
+    "g6e":  "L40S",
+    "g6":   "L4",
+    "p3":   "V100",
+    "p4d":  "A100 40GB",
+    "p4de": "A100 80GB",
+    "p5":   "H100",
+    "p5e":  "H200",
+    "p6":   "B200",
+}
+
+# SKUs whose GPU is non-standard / not in our taxonomy — skip them in display
+_AWS_SKIP_GPUS = frozenset({"V520", "T4G"})
+
 # A GPU base must appear at ≥ this many distinct providers in the last 7 days
 # to be shown in flagship / workhorse / inference (guards against phantom models).
 # Systems section is curated and exempt from this filter.
@@ -438,10 +460,7 @@ def _build_hero_stats(
     ).fetchone()
 
     ld = _latest_date(con)
-    prov_count: int = con.execute(
-        "SELECT COUNT(DISTINCT provider) FROM price_history WHERE snapshot_date = ?",
-        (ld,),
-    ).fetchone()[0]
+    prov_count, _ = _build_active_providers(con)  # normalised: RunPod Community → RunPod
 
     # Median spot discount from flagship + workhorse + systems
     discounts = [
@@ -535,6 +554,40 @@ def _build_spread_leaders(con: sqlite3.Connection) -> list[dict]:
         (ld, ld),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def _aws_sku_to_gpu(sku: str) -> Optional[str]:
+    """Translate an AWS EC2 instance SKU to a GPU model name, or None.
+
+    Longest-prefix-first matching: 'g6e.48xlarge' → L40S (not L4).
+    Returns None for unrecognised SKUs or non-display GPU variants.
+    """
+    s = sku.lower().split(".")[0]  # strip size suffix: g6.2xlarge → g6
+    # Sort by length descending so longer prefixes (p4de, g6e) win over shorter (p4d, g6)
+    for prefix, gpu in sorted(AWS_SKU_TO_GPU.items(), key=lambda kv: -len(kv[0])):
+        if s.startswith(prefix):
+            if gpu in _AWS_SKIP_GPUS:
+                return None
+            return gpu
+    return None
+
+
+def _build_active_providers(con: sqlite3.Connection) -> tuple[int, list[str]]:
+    """Return (count, sorted_list) of active providers over the last 7 days.
+
+    'RunPod Community' is normalised to 'RunPod' so it is not double-counted.
+    """
+    rows = con.execute(
+        """
+        SELECT DISTINCT
+            CASE WHEN provider = 'RunPod Community' THEN 'RunPod' ELSE provider END AS prov
+        FROM price_history
+        WHERE snapshot_date >= date('now', '-7 days')
+        ORDER BY prov
+        """
+    ).fetchall()
+    providers = [r[0] for r in rows]
+    return len(providers), providers
 
 
 def _build_min_provider_bases(
@@ -765,7 +818,14 @@ def _render_spread_leaders(leaders: list[dict]) -> str:
         return '<p class="notice-msg">No spot offers available for comparison.</p>'
     parts = []
     for lead in leaders:
-        base = _gpu_base(lead["gpu_model"]) or lead["gpu_model"]
+        raw_model = lead["gpu_model"]
+        # Try canonical base-name lookup first, then AWS SKU mapping
+        base = _gpu_base(raw_model)
+        if base is None:
+            base = _aws_sku_to_gpu(raw_model)
+        if base is None:
+            # Unrecognised model (AWS SKU we don't map, etc.) — skip row
+            continue
         parts.append(
             f'<div class="spread-row">'
             f'<div class="spread-pct">{lead["spread_pct"]:.0f}%</div>'
@@ -777,6 +837,8 @@ def _render_spread_leaders(leaders: list[dict]) -> str:
             f'<span class="spread-sp">{_fmt(lead["sp_price"])} spot</span>'
             f"</div></div></div>"
         )
+    if not parts:
+        return '<p class="notice-msg">No spot offers available for comparison.</p>'
     return "\n".join(parts)
 
 
@@ -1017,6 +1079,42 @@ html{
 
 /* ── Misc ────────────────────────────────────────────────────────────── */
 .notice-msg{color:var(--t3);font-style:italic;font-size:.88rem;padding:8px 0}
+
+/* ── Atlas watermark sub-label ───────────────────────────────────────── */
+.atlas-idx{font-size:.55rem;font-weight:700;letter-spacing:.18em;color:var(--t3);text-transform:uppercase;text-align:right;margin-top:2px}
+
+/* ── Waitlist CTA ────────────────────────────────────────────────────── */
+.cta-block{
+  background:linear-gradient(135deg,rgba(59,130,246,.10) 0%,rgba(6,182,212,.07) 100%);
+  border:1px solid rgba(59,130,246,.30);border-radius:var(--r);
+  padding:52px 48px;margin:0 0 64px;
+  display:flex;align-items:center;justify-content:space-between;gap:48px;
+  box-shadow:0 0 60px rgba(59,130,246,.10),inset 0 1px 0 rgba(255,255,255,.04);
+  position:relative;overflow:hidden;
+}
+.cta-block::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 80% at 80% 50%,rgba(6,182,212,.06) 0%,transparent 70%);
+  pointer-events:none;
+}
+@media(max-width:700px){.cta-block{flex-direction:column;padding:36px 28px;gap:28px}}
+.cta-text-col{flex:1;min-width:0;position:relative;z-index:1}
+.cta-headline{
+  font-size:1.55rem;font-weight:800;color:var(--t1);line-height:1.25;margin-bottom:12px;
+  letter-spacing:-.3px;
+}
+.cta-sub{font-size:.9rem;color:var(--t2);line-height:1.7;max-width:520px}
+.cta-btn-col{flex-shrink:0;position:relative;z-index:1}
+.cta-btn{
+  display:inline-block;
+  background:linear-gradient(135deg,var(--accent) 0%,var(--cyan) 100%);
+  color:#fff;font-weight:700;font-size:1rem;letter-spacing:-.2px;
+  padding:16px 36px;border-radius:10px;text-decoration:none;
+  box-shadow:0 0 28px rgba(59,130,246,.40);
+  transition:box-shadow .2s,transform .15s;white-space:nowrap;
+}
+.cta-btn:hover{box-shadow:0 0 48px rgba(59,130,246,.70);transform:translateY(-2px)}
+
 .site-footer{
   border-top:1px solid var(--bd);padding:28px 28px 0;
   max-width:1600px;margin:0 auto;font-size:.75rem;color:var(--t3);
@@ -1373,7 +1471,8 @@ def generate_html(
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Atlas GPU Pricing Dashboard</title>
+  <title>Atlas · GPU Compute Index</title>
+  <meta name="description" content="The live cross-provider GPU price index. Real-time on-demand, spot, and reserved pricing across {prov_cnt} cloud providers — H100, H200, B200, A100 and more."/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1384,12 +1483,13 @@ def generate_html(
   <div class="hdr-left">
     <div class="logo-dot"></div>
     <div>
-      <div class="logo-brand">Atlas GPU Pricing</div>
-      <div class="logo-sub">H100 &middot; H200 &middot; B200 &middot; A100 across 14 providers</div>
+      <div class="logo-brand">Atlas &middot; GPU Compute Index</div>
+      <div class="logo-sub">The live cross-provider GPU price index &middot; {prov_cnt} clouds tracked &middot; updated daily</div>
     </div>
   </div>
   <div>
-    <div class="atlas-wm">Atlas</div>
+    <div class="atlas-wm">ATLAS</div>
+    <div class="atlas-idx">GPU Compute Index</div>
     <div class="snap-date">
       {snap_date} &middot; <span id="rel-time" data-ts="{gen_ts}">...</span>
     </div>
@@ -1448,11 +1548,21 @@ def generate_html(
       {leaders_html}
     </section>
   </div>
+
+  <div class="cta-block">
+    <div class="cta-text-col">
+      <div class="cta-headline">Stop arbitraging GPU prices manually.</div>
+      <div class="cta-sub">Atlas monitors {prov_cnt} clouds in real time, alerts you to price drops, and routes your workloads to the cheapest available GPU — automatically.</div>
+    </div>
+    <div class="cta-btn-col">
+      <a class="cta-btn" href="mailto:hello@atlas-compute.io?subject=Atlas%20Waitlist">Join the waitlist &rarr;</a>
+    </div>
+  </div>
 </div>
 
 <footer class="site-footer">
-  <span>Automated daily scrape &middot; 06:00 UTC &middot; on-demand prices per GPU, USD
-  &middot; <a href="https://github.com/romaindeniau75-commits/gpu-price-scraper/actions">GitHub Actions</a></span>
+  <span>Automated daily scrape &middot; 05:17 UTC &middot; on-demand prices per GPU, USD
+  &middot; <a href="https://github.com/romaindeniau/gpu-price-scraper/actions">GitHub Actions</a></span>
   <span>Generated {gen_ts[:19]} UTC</span>
 </footer>
 
