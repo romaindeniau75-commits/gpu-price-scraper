@@ -1465,23 +1465,25 @@ def _render_flagship_trend_html(trend: list[dict]) -> str:
         n_sp = latest.get("n_sp", 0)
         if od is not None:
             stats_parts.append(
-                f'<div class="trend-stat">H100 on-demand avg: '
+                f'<div class="trend-stat">H100 best on-demand avg: '
                 f'<strong>${od:.2f}/hr</strong>'
-                f'<span style="font-weight:400"> across {n_od} provider{"s" if n_od != 1 else ""}</span>'
+                f'<span style="font-weight:400"> ({n_od} provider{"s" if n_od != 1 else ""})</span>'
                 f'</div>'
             )
         if sp is not None:
             stats_parts.append(
-                f'<div class="trend-stat">H100 spot avg: '
+                f'<div class="trend-stat">H100 best spot avg: '
                 f'<strong>${sp:.2f}/hr</strong>'
-                f'<span style="font-weight:400"> across {n_sp} provider{"s" if n_sp != 1 else ""}</span>'
+                f'<span style="font-weight:400"> ({n_sp} provider{"s" if n_sp != 1 else ""})</span>'
                 f'</div>'
             )
         if od and sp and od > 0 and od > sp:
             spread = (od - sp) / od * 100
             stats_parts.append(
-                f'<div class="trend-stat">H100 spread: '
-                f'<strong>&minus;{spread:.1f}%</strong></div>'
+                f'<div class="trend-stat">Current spread: '
+                f'<strong>&minus;{spread:.1f}%</strong>'
+                f'<span style="font-weight:400"> (best on-demand vs best spot)</span>'
+                f'</div>'
             )
         # 7-day change chip (only when >= 7 data points)
         if len(trend) >= 7 and od is not None:
@@ -1507,7 +1509,7 @@ def _render_flagship_trend_html(trend: list[dict]) -> str:
         f'<span class="sec-label">Atlas H100 Index</span>'
         f'<div class="sec-rule"></div>'
         f'<span class="sec-sub">'
-        f'The live benchmark for the most-traded GPU &middot; daily min across all providers'
+        f'Atlas best-price benchmark &middot; what an arbitrage router sees, averaged across 12 clouds'
         f'</span>'
         f'</div>\n'
         f'<div class="trend-card">\n'
