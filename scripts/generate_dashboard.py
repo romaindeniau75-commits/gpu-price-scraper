@@ -1633,7 +1633,7 @@ def generate_html(
     <div class="logo-dot"></div>
     <div>
       <div class="logo-brand">Atlas &middot; GPU Compute Index</div>
-      <div class="logo-sub">The live cross-provider GPU price index &middot; {prov_cnt} clouds tracked &middot; updated daily</div>
+      <div class="logo-sub">The live cross-provider GPU price index &middot; Primary: H100 &middot; {prov_cnt} clouds tracked &middot; updated daily</div>
     </div>
   </div>
   <div>
