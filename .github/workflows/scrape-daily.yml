@@ -2,8 +2,8 @@ name: Daily GPU Price Scrape
 
 on:
   schedule:
-    # 06:00 UTC every day
-    - cron: "0 6 * * *"
+    # Off-peak schedule to minimize GitHub Actions queue delay (avoid round hours)
+    - cron: "17 5 * * *"
   workflow_dispatch:
     inputs:
       gpu_filter:
