@@ -78,27 +78,51 @@ EARLY_ACCESS_MODELS: dict[str, str] = {
     "GB300": "Early access · Grace Blackwell system",
 }
 
-# AWS EC2 instance-family prefix → canonical GPU model name.
-# AWS stores instance SKUs (g6.2xlarge, p4d.24xlarge …) as gpu_model in the DB;
-# this table lets us translate them back to real GPU names for display.
-# Longer prefixes MUST come before shorter ones (g6e before g6).
-AWS_SKU_TO_GPU: dict[str, str] = {
-    "g4dn": "T4",
-    "g4ad": "V520",      # AMD Radeon Pro — skip via lookup returning None
-    "g5g":  "T4G",       # Graviton+T4G — skip (non-standard)
-    "g5":   "A10G",
-    "g6e":  "L40S",
-    "g6":   "L4",
-    "p3":   "V100",
-    "p4d":  "A100 40GB",
-    "p4de": "A100 80GB",
-    "p5":   "H100",
-    "p5e":  "H200",
-    "p6":   "B200",
+# AWS EC2 exact instance SKU → (canonical GPU model, number of GPUs in that instance).
+# AWS stores these SKUs as gpu_model in the DB; this table lets us translate them to
+# real GPU names AND divide the node price by gpu_count to get $/GPU/hr.
+AWS_SKU_TO_GPU: dict[str, tuple[str, int]] = {
+    "g4dn.xlarge":   ("T4", 1),
+    "g4dn.2xlarge":  ("T4", 1),
+    "g4dn.4xlarge":  ("T4", 1),
+    "g4dn.8xlarge":  ("T4", 1),
+    "g4dn.16xlarge": ("T4", 1),
+    "g4dn.12xlarge": ("T4", 4),
+    "g4dn.metal":    ("T4", 8),
+    "g5.xlarge":     ("A10G", 1),
+    "g5.2xlarge":    ("A10G", 1),
+    "g5.4xlarge":    ("A10G", 1),
+    "g5.8xlarge":    ("A10G", 1),
+    "g5.16xlarge":   ("A10G", 1),
+    "g5.12xlarge":   ("A10G", 4),
+    "g5.24xlarge":   ("A10G", 4),
+    "g5.48xlarge":   ("A10G", 8),
+    "g6.xlarge":     ("L4", 1),
+    "g6.2xlarge":    ("L4", 1),
+    "g6.4xlarge":    ("L4", 1),
+    "g6.8xlarge":    ("L4", 1),
+    "g6.16xlarge":   ("L4", 1),
+    "g6.12xlarge":   ("L4", 4),
+    "g6.24xlarge":   ("L4", 4),
+    "g6.48xlarge":   ("L4", 8),
+    "g6e.xlarge":    ("L40S", 1),
+    "g6e.2xlarge":   ("L40S", 1),
+    "g6e.4xlarge":   ("L40S", 1),
+    "g6e.8xlarge":   ("L40S", 1),
+    "g6e.16xlarge":  ("L40S", 1),
+    "g6e.12xlarge":  ("L40S", 4),
+    "g6e.24xlarge":  ("L40S", 4),
+    "g6e.48xlarge":  ("L40S", 8),
+    "p3.2xlarge":    ("V100", 1),
+    "p3.8xlarge":    ("V100", 4),
+    "p3.16xlarge":   ("V100", 8),
+    "p3dn.24xlarge": ("V100", 8),
+    "p4d.24xlarge":  ("A100 40GB", 8),
+    "p4de.24xlarge": ("A100 80GB", 8),
+    "p5.48xlarge":   ("H100", 8),
+    "p5e.48xlarge":  ("H200", 8),
+    "p6.48xlarge":   ("B200", 8),
 }
-
-# SKUs whose GPU is non-standard / not in our taxonomy — skip them in display
-_AWS_SKIP_GPUS = frozenset({"V520", "T4G"})
 
 # A GPU base must appear at ≥ this many distinct providers in the last 7 days
 # to be shown in flagship / workhorse / inference (guards against phantom models).
@@ -556,19 +580,29 @@ def _build_spread_leaders(con: sqlite3.Connection) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def _aws_sku_to_gpu(sku: str) -> Optional[str]:
-    """Translate an AWS EC2 instance SKU to a GPU model name, or None.
+def _aws_sku_to_gpu(sku: str) -> Optional[tuple[str, int]]:
+    """Translate an AWS EC2 instance SKU to (gpu_model, gpu_count), or None.
 
-    Longest-prefix-first matching: 'g6e.48xlarge' → L40S (not L4).
-    Returns None for unrecognised SKUs or non-display GPU variants.
+    Exact match first (g6.2xlarge → ("L4", 1)).
+    Falls back to longest-prefix match for any unknown size variants.
+    Returns None for unrecognised SKUs.
     """
-    s = sku.lower().split(".")[0]  # strip size suffix: g6.2xlarge → g6
-    # Sort by length descending so longer prefixes (p4de, g6e) win over shorter (p4d, g6)
-    for prefix, gpu in sorted(AWS_SKU_TO_GPU.items(), key=lambda kv: -len(kv[0])):
-        if s.startswith(prefix):
-            if gpu in _AWS_SKIP_GPUS:
-                return None
-            return gpu
+    key = sku.lower()
+    # 1 — exact match
+    if key in AWS_SKU_TO_GPU:
+        return AWS_SKU_TO_GPU[key]
+    # 2 — longest-prefix fallback (handles any size not in the explicit table)
+    family = key.split(".")[0]  # e.g. "g6"
+    best: Optional[tuple[str, int]] = None
+    best_len = 0
+    for exact_sku, val in AWS_SKU_TO_GPU.items():
+        prefix = exact_sku.split(".")[0]  # e.g. "g6" from "g6.2xlarge"
+        if family == prefix and len(prefix) > best_len:
+            best = val
+            best_len = len(prefix)
+    # Return with gpu_count=1 for unknown sizes (conservative)
+    if best is not None:
+        return (best[0], 1)
     return None
 
 
@@ -695,9 +729,13 @@ def _card_html(g: dict, idx: int, card_cls: str) -> str:
     color    = _CARD_COLORS[idx % len(_CARD_COLORS)]
     cid      = "bgc_" + gpu.replace(" ", "_").replace("/", "_")
 
-    od_html = _tier_block_html("On-Demand", "chip-od",       g["on_demand"])
-    sp_html = _tier_block_html("Spot / Int.", "chip-spot",   g["spot"])
-    rv_html = _tier_block_html("Reserved",  "chip-reserved", g["reserved"], is_reserved=True)
+    od_html = _tier_block_html("On-Demand",   "chip-od",       g["on_demand"])
+    sp_html = _tier_block_html("Spot / Int.", "chip-spot",     g["spot"])
+    # Reserved: only rendered when data actually exists — keeps cards clean in the 99% case
+    rv_html = (
+        _tier_block_html("Reserved", "chip-reserved", g["reserved"], is_reserved=True)
+        if g["reserved"] is not None else ""
+    )
 
     banner = (
         f'<div class="spot-banner">Spot discount: &minus;{disc:.1f}%</div>'
@@ -738,7 +776,7 @@ def _card_html(g: dict, idx: int, card_cls: str) -> str:
     )
 
 
-def _inference_row_html(g: dict) -> str:
+def _inference_row_html(g: dict, show_reserved: bool = True) -> str:
     gpu = g["base_gpu"]
     od  = g["on_demand"]
     sp  = g["spot"]
@@ -759,12 +797,13 @@ def _inference_row_html(g: dict) -> str:
             f'<span class="inf-meta">{meta}{var_s}</span>'
         )
 
+    rv_cell = f'<div class="inf-cell">{_cell(rv, is_reserved=True)}</div>' if show_reserved else ""
     return (
         f'<div class="inf-row">'
         f'<span class="inf-gpu">{gpu}</span>'
         f'<div class="inf-cell">{_cell(od)}</div>'
         f'<div class="inf-cell">{_cell(sp)}</div>'
-        f'<div class="inf-cell">{_cell(rv, is_reserved=True)}</div>'
+        f'{rv_cell}'
         f"</div>"
     )
 
@@ -814,31 +853,69 @@ def _render_movers(movers_data: dict) -> str:
 
 
 def _render_spread_leaders(leaders: list[dict]) -> str:
+    """Render Market Spread Leaders widget.
+
+    For AWS multi-GPU instances the node price is divided by gpu_count so
+    each row reflects the per-GPU price.  Rows that resolve to the same GPU
+    model are deduplicated (highest spread wins).  Top-5 distinct GPU models.
+    """
     if not leaders:
         return '<p class="notice-msg">No spot offers available for comparison.</p>'
-    parts = []
+
+    # 1 — Resolve GPU name + normalise price to per-GPU/hr
+    resolved: list[dict] = []
     for lead in leaders:
         raw_model = lead["gpu_model"]
-        # Try canonical base-name lookup first, then AWS SKU mapping
+        # Canonical base name first (non-AWS rows)
         base = _gpu_base(raw_model)
+        gpu_count = 1
         if base is None:
-            base = _aws_sku_to_gpu(raw_model)
-        if base is None:
-            # Unrecognised model (AWS SKU we don't map, etc.) — skip row
-            continue
+            # Try AWS SKU → (model, count)
+            aws = _aws_sku_to_gpu(raw_model)
+            if aws is None:
+                continue  # unrecognised — skip
+            base, gpu_count = aws
+
+        od_per_gpu = lead["od_price"] / gpu_count
+        sp_per_gpu = lead["sp_price"] / gpu_count
+        if od_per_gpu <= sp_per_gpu or od_per_gpu <= 0:
+            continue  # spread inverted after division — skip
+        spread_pct = round((od_per_gpu - sp_per_gpu) / od_per_gpu * 100, 1)
+
+        resolved.append({
+            "base":       base,
+            "od_price":   od_per_gpu,
+            "sp_price":   sp_per_gpu,
+            "spread_pct": spread_pct,
+            "gpu_count":  gpu_count,
+        })
+
+    # 2 — Deduplicate: keep highest spread per GPU model
+    best: dict[str, dict] = {}
+    for r in resolved:
+        key = r["base"]
+        if key not in best or r["spread_pct"] > best[key]["spread_pct"]:
+            best[key] = r
+
+    # 3 — Sort by spread descending, take top 5
+    top5 = sorted(best.values(), key=lambda x: -x["spread_pct"])[:5]
+
+    if not top5:
+        return '<p class="notice-msg">No spot offers available for comparison.</p>'
+
+    parts = []
+    for r in top5:
         parts.append(
             f'<div class="spread-row">'
-            f'<div class="spread-pct">{lead["spread_pct"]:.0f}%</div>'
+            f'<div class="spread-pct">{r["spread_pct"]:.0f}%</div>'
             f'<div class="spread-body">'
-            f'<div class="spread-gpu">{base}</div>'
+            f'<div class="spread-gpu">{r["base"]}</div>'
             f'<div class="spread-prices">'
-            f'<span class="spread-od">{_fmt(lead["od_price"])} on-demand</span>'
+            f'<span class="spread-od">{_fmt(r["od_price"])} on-demand</span>'
             f'<span class="spread-arr"> &rarr; </span>'
-            f'<span class="spread-sp">{_fmt(lead["sp_price"])} spot</span>'
+            f'<span class="spread-sp">{_fmt(r["sp_price"])} spot</span>'
             f"</div></div></div>"
         )
-    if not parts:
-        return '<p class="notice-msg">No spot offers available for comparison.</p>'
     return "\n".join(parts)
 
 
@@ -940,7 +1017,7 @@ html{
 }
 
 /* ── Tier blocks ────────────────────────────────────────────────────── */
-.tier-blocks{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.tier-blocks{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px}
 .tb{
   background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
   border-radius:10px;padding:10px 10px 9px;display:flex;flex-direction:column;gap:5px;min-width:0;
@@ -979,7 +1056,7 @@ html{
 .inf-table{border:1px solid var(--bd);border-radius:12px;overflow:hidden}
 .inf-header,.inf-row{
   display:grid;
-  grid-template-columns:130px 1fr 1fr 1fr;
+  grid-template-columns:var(--inf-cols,130px 1fr 1fr 1fr);
   gap:0;padding:10px 18px;align-items:center;
 }
 .inf-header{
@@ -1434,12 +1511,18 @@ def generate_html(
 
     # ── Inference section ──
     if inference:
-        inf_rows = "\n".join(_inference_row_html(g) for g in inference)
+        # Only show Reserved column when at least one inference GPU has reserved pricing
+        inf_has_reserved = any(g["reserved"] is not None for g in inference)
+        cols = "130px 1fr 1fr 1fr" if inf_has_reserved else "130px 1fr 1fr"
+        rv_header = "<span>Reserved</span>" if inf_has_reserved else ""
+        inf_rows = "\n".join(
+            _inference_row_html(g, show_reserved=inf_has_reserved) for g in inference
+        )
         inf_html = (
-            f'<div class="inf-table">'
+            f'<div class="inf-table" style="--inf-cols:{cols}">'
             f'<div class="inf-header">'
             f'<span>GPU</span><span>On-Demand</span>'
-            f'<span>Spot / Int.</span><span>Reserved</span>'
+            f'<span>Spot / Int.</span>{rv_header}'
             f"</div>"
             f"{inf_rows}"
             f"</div>"
