@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-05-21T08:44:40.435537+00:00",
+  "generated_at": "2026-05-22T08:33:59.016655+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 12,
-    "day_count": 5,
-    "total_rows": 1246,
+    "day_count": 6,
+    "total_rows": 1509,
     "median_spot_discount": 65.0,
-    "latest_date": "2026-05-21"
+    "latest_date": "2026-05-22"
   },
   "movers": {
     "insufficient": true,
-    "have_days": 5
+    "have_days": 6
   },
   "spread_leaders": [
     {
@@ -28,8 +28,8 @@
     {
       "gpu_model": "V100 16GB",
       "od_price": 0.1381,
-      "sp_price": 0.0209,
-      "spread_pct": 84.9
+      "sp_price": 0.0268,
+      "spread_pct": 80.6
     },
     {
       "gpu_model": "A10G",
@@ -77,6 +77,13 @@
       "date": "2026-05-21",
       "avg_on_demand": 4.0112,
       "avg_spot": 2.1122,
+      "n_od": 8,
+      "n_sp": 5
+    },
+    {
+      "date": "2026-05-22",
+      "avg_on_demand": 4.0112,
+      "avg_spot": 2.1121,
       "n_od": 8,
       "n_sp": 5
     }
