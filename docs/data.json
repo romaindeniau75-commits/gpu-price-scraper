@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-05-29T08:53:34.116983+00:00",
+  "generated_at": "2026-05-30T07:59:07.363456+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 12,
-    "day_count": 13,
-    "total_rows": 3343,
+    "day_count": 14,
+    "total_rows": 3598,
     "median_spot_discount": 61.4,
-    "latest_date": "2026-05-29"
+    "latest_date": "2026-05-30"
   },
   "movers": {
     "insufficient": false,
@@ -14,8 +14,8 @@
       {
         "gpu_model": "rtxa4000 pcie 16gb",
         "now_price": 0.145,
-        "old_price": 0.0882,
-        "pct_change": 64.4
+        "old_price": 0.0885,
+        "pct_change": 63.9
       },
       {
         "gpu_model": "RTX 4080",
@@ -24,22 +24,22 @@
         "pct_change": 56.3
       },
       {
-        "gpu_model": "RTX 6000 Ada",
-        "now_price": 0.77,
-        "old_price": 0.6308,
-        "pct_change": 22.1
-      },
-      {
         "gpu_model": "RTX 3090",
         "now_price": 0.33,
-        "old_price": 0.2761,
-        "pct_change": 19.5
+        "old_price": 0.2714,
+        "pct_change": 21.6
       },
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.5335,
-        "old_price": 0.4492,
-        "pct_change": 18.8
+        "old_price": 0.4414,
+        "pct_change": 20.9
+      },
+      {
+        "gpu_model": "RTX 6000 Ada",
+        "now_price": 0.77,
+        "old_price": 0.6387,
+        "pct_change": 20.6
       }
     ]
   },
@@ -166,6 +166,13 @@
       "avg_spot": 2.3576,
       "n_od": 8,
       "n_sp": 4
+    },
+    {
+      "date": "2026-05-30",
+      "avg_on_demand": 4.1312,
+      "avg_spot": 2.1795,
+      "n_od": 8,
+      "n_sp": 5
     }
   ]
 }
