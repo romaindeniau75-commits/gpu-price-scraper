@@ -1,21 +1,27 @@
 {
-  "generated_at": "2026-05-30T07:59:07.363456+00:00",
+  "generated_at": "2026-05-31T08:24:10.496265+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 12,
-    "day_count": 14,
-    "total_rows": 3598,
-    "median_spot_discount": 61.4,
-    "latest_date": "2026-05-30"
+    "day_count": 15,
+    "total_rows": 3844,
+    "median_spot_discount": 63.1,
+    "latest_date": "2026-05-31"
   },
   "movers": {
     "insufficient": false,
     "movers": [
       {
-        "gpu_model": "rtxa4000 pcie 16gb",
-        "now_price": 0.145,
-        "old_price": 0.0885,
-        "pct_change": 63.9
+        "gpu_model": "RTX 3090",
+        "now_price": 0.46,
+        "old_price": 0.2681,
+        "pct_change": 71.6
+      },
+      {
+        "gpu_model": "RTX 4090",
+        "now_price": 0.69,
+        "old_price": 0.432,
+        "pct_change": 59.7
       },
       {
         "gpu_model": "RTX 4080",
@@ -24,22 +30,16 @@
         "pct_change": 56.3
       },
       {
-        "gpu_model": "RTX 3090",
-        "now_price": 0.33,
-        "old_price": 0.2714,
-        "pct_change": 21.6
-      },
-      {
-        "gpu_model": "RTX 4090",
-        "now_price": 0.5335,
-        "old_price": 0.4414,
-        "pct_change": 20.9
+        "gpu_model": "A100 80GB SXM",
+        "now_price": 2.2502,
+        "old_price": 1.7202,
+        "pct_change": 30.8
       },
       {
         "gpu_model": "RTX 6000 Ada",
         "now_price": 0.77,
-        "old_price": 0.6387,
-        "pct_change": 20.6
+        "old_price": 0.6278,
+        "pct_change": 22.7
       }
     ]
   },
@@ -49,6 +49,12 @@
       "od_price": 7.824,
       "sp_price": 0.7824,
       "spread_pct": 90.0
+    },
+    {
+      "gpu_model": "V100 16GB",
+      "od_price": 0.17,
+      "sp_price": 0.0198,
+      "spread_pct": 88.4
     },
     {
       "gpu_model": "g6.2xlarge",
@@ -67,12 +73,6 @@
       "od_price": 0.35,
       "sp_price": 0.0894,
       "spread_pct": 74.5
-    },
-    {
-      "gpu_model": "L4",
-      "od_price": 0.39,
-      "sp_price": 0.1039,
-      "spread_pct": 73.4
     }
   ],
   "flagship_trend": [
@@ -169,6 +169,13 @@
     },
     {
       "date": "2026-05-30",
+      "avg_on_demand": 4.1312,
+      "avg_spot": 2.1795,
+      "n_od": 8,
+      "n_sp": 5
+    },
+    {
+      "date": "2026-05-31",
       "avg_on_demand": 4.1312,
       "avg_spot": 2.1795,
       "n_od": 8,
