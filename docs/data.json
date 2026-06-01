@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-05-31T08:24:10.496265+00:00",
+  "generated_at": "2026-06-01T10:34:08.542814+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 12,
-    "day_count": 15,
-    "total_rows": 3844,
+    "day_count": 16,
+    "total_rows": 4089,
     "median_spot_discount": 63.1,
-    "latest_date": "2026-05-31"
+    "latest_date": "2026-06-01"
   },
   "movers": {
     "insufficient": false,
@@ -14,14 +14,14 @@
       {
         "gpu_model": "RTX 3090",
         "now_price": 0.46,
-        "old_price": 0.2681,
-        "pct_change": 71.6
+        "old_price": 0.2697,
+        "pct_change": 70.6
       },
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.69,
-        "old_price": 0.432,
-        "pct_change": 59.7
+        "old_price": 0.4253,
+        "pct_change": 62.3
       },
       {
         "gpu_model": "RTX 4080",
@@ -32,14 +32,14 @@
       {
         "gpu_model": "A100 80GB SXM",
         "now_price": 2.2502,
-        "old_price": 1.7202,
-        "pct_change": 30.8
+        "old_price": 1.7178,
+        "pct_change": 31.0
       },
       {
         "gpu_model": "RTX 6000 Ada",
         "now_price": 0.77,
-        "old_price": 0.6278,
-        "pct_change": 22.7
+        "old_price": 0.6337,
+        "pct_change": 21.5
       }
     ]
   },
@@ -49,12 +49,6 @@
       "od_price": 7.824,
       "sp_price": 0.7824,
       "spread_pct": 90.0
-    },
-    {
-      "gpu_model": "V100 16GB",
-      "od_price": 0.17,
-      "sp_price": 0.0198,
-      "spread_pct": 88.4
     },
     {
       "gpu_model": "g6.2xlarge",
@@ -73,6 +67,12 @@
       "od_price": 0.35,
       "sp_price": 0.0894,
       "spread_pct": 74.5
+    },
+    {
+      "gpu_model": "L4",
+      "od_price": 0.39,
+      "sp_price": 0.1039,
+      "spread_pct": 73.4
     }
   ],
   "flagship_trend": [
@@ -180,6 +180,13 @@
       "avg_spot": 2.1795,
       "n_od": 8,
       "n_sp": 5
+    },
+    {
+      "date": "2026-06-01",
+      "avg_on_demand": 4.1312,
+      "avg_spot": 2.3576,
+      "n_od": 8,
+      "n_sp": 4
     }
   ]
 }
