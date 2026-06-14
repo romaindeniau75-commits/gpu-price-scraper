@@ -1,45 +1,45 @@
 {
-  "generated_at": "2026-06-13T08:33:10.217308+00:00",
+  "generated_at": "2026-06-14T08:52:00.814589+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 12,
-    "day_count": 28,
-    "total_rows": 7259,
-    "median_spot_discount": 62.4,
-    "latest_date": "2026-06-13"
+    "day_count": 29,
+    "total_rows": 7540,
+    "median_spot_discount": 63.1,
+    "latest_date": "2026-06-14"
   },
   "movers": {
     "insufficient": false,
     "movers": [
       {
+        "gpu_model": "geforcertx5090 pcie 32gb",
+        "now_price": 7.5,
+        "old_price": 0.5358,
+        "pct_change": 1299.8
+      },
+      {
         "gpu_model": "rtxa4000 pcie 16gb",
-        "now_price": 0.07,
-        "old_price": 0.1018,
-        "pct_change": -31.2
+        "now_price": 0.08,
+        "old_price": 0.1042,
+        "pct_change": -23.2
       },
       {
         "gpu_model": "A100 40GB",
         "now_price": 2.1077,
-        "old_price": 1.7234,
-        "pct_change": 22.3
+        "old_price": 1.749,
+        "pct_change": 20.5
       },
       {
         "gpu_model": "RTX 3090",
         "now_price": 0.25,
-        "old_price": 0.3028,
-        "pct_change": -17.4
+        "old_price": 0.3038,
+        "pct_change": -17.7
       },
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.39,
-        "old_price": 0.4706,
-        "pct_change": -17.1
-      },
-      {
-        "gpu_model": "RTX 4080",
-        "now_price": 0.32,
-        "old_price": 0.3624,
-        "pct_change": -11.7
+        "old_price": 0.4731,
+        "pct_change": -17.6
       }
     ]
   },
@@ -51,28 +51,28 @@
       "spread_pct": 90.0
     },
     {
+      "gpu_model": "V100 16GB",
+      "od_price": 0.17,
+      "sp_price": 0.0192,
+      "spread_pct": 88.7
+    },
+    {
       "gpu_model": "g6.2xlarge",
       "od_price": 0.9776,
       "sp_price": 0.1259,
       "spread_pct": 87.1
     },
     {
-      "gpu_model": "A10G",
-      "od_price": 1.006,
-      "sp_price": 0.241,
-      "spread_pct": 76.0
+      "gpu_model": "A100 80GB",
+      "od_price": 1.39,
+      "sp_price": 0.2538,
+      "spread_pct": 81.7
     },
     {
-      "gpu_model": "T4",
-      "od_price": 0.35,
-      "sp_price": 0.0894,
-      "spread_pct": 74.5
-    },
-    {
-      "gpu_model": "A100 40GB SXM",
-      "od_price": 1.29,
-      "sp_price": 0.4515,
-      "spread_pct": 65.0
+      "gpu_model": "RTX 5090",
+      "od_price": 0.99,
+      "sp_price": 0.2129,
+      "spread_pct": 78.5
     }
   ],
   "flagship_trend": [
@@ -267,6 +267,13 @@
     },
     {
       "date": "2026-06-13",
+      "avg_on_demand": 4.1235,
+      "avg_spot": 2.1461,
+      "n_od": 9,
+      "n_sp": 5
+    },
+    {
+      "date": "2026-06-14",
       "avg_on_demand": 4.1235,
       "avg_spot": 2.1461,
       "n_od": 9,
