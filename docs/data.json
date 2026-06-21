@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-06-20T08:29:38.507384+00:00",
+  "generated_at": "2026-06-21T09:03:47.987124+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 12,
-    "day_count": 35,
-    "total_rows": 9114,
+    "day_count": 36,
+    "total_rows": 9375,
     "median_spot_discount": 63.1,
-    "latest_date": "2026-06-20"
+    "latest_date": "2026-06-21"
   },
   "movers": {
     "insufficient": false,
@@ -14,32 +14,32 @@
       {
         "gpu_model": "RTX 3090",
         "now_price": 0.46,
-        "old_price": 0.3045,
-        "pct_change": 51.0
+        "old_price": 0.3014,
+        "pct_change": 52.6
       },
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.69,
-        "old_price": 0.4806,
-        "pct_change": 43.6
+        "old_price": 0.4755,
+        "pct_change": 45.1
       },
       {
         "gpu_model": "RTX 4080",
         "now_price": 0.5,
-        "old_price": 0.38,
-        "pct_change": 31.6
+        "old_price": 0.3773,
+        "pct_change": 32.5
       },
       {
         "gpu_model": "A100 80GB SXM",
         "now_price": 2.2502,
-        "old_price": 1.8874,
-        "pct_change": 19.2
+        "old_price": 1.8924,
+        "pct_change": 18.9
       },
       {
         "gpu_model": "L4",
         "now_price": 0.6337,
-        "old_price": 0.5544,
-        "pct_change": 14.3
+        "old_price": 0.5532,
+        "pct_change": 14.5
       }
     ]
   },
@@ -53,8 +53,8 @@
     {
       "gpu_model": "V100 16GB",
       "od_price": 0.17,
-      "sp_price": 0.0198,
-      "spread_pct": 88.4
+      "sp_price": 0.0209,
+      "spread_pct": 87.7
     },
     {
       "gpu_model": "g6.2xlarge",
@@ -63,10 +63,10 @@
       "spread_pct": 87.1
     },
     {
-      "gpu_model": "RTX 5090",
-      "od_price": 0.99,
-      "sp_price": 0.2129,
-      "spread_pct": 78.5
+      "gpu_model": "RTX 4090",
+      "od_price": 0.69,
+      "sp_price": 0.1344,
+      "spread_pct": 80.5
     },
     {
       "gpu_model": "A10G",
@@ -316,6 +316,13 @@
     },
     {
       "date": "2026-06-20",
+      "avg_on_demand": 4.1235,
+      "avg_spot": 2.1461,
+      "n_od": 9,
+      "n_sp": 5
+    },
+    {
+      "date": "2026-06-21",
       "avg_on_demand": 4.1235,
       "avg_spot": 2.1461,
       "n_od": 9,
