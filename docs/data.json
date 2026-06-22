@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-06-21T09:03:47.987124+00:00",
+  "generated_at": "2026-06-22T10:48:28.211811+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 12,
-    "day_count": 36,
-    "total_rows": 9375,
+    "day_count": 37,
+    "total_rows": 9628,
     "median_spot_discount": 63.1,
-    "latest_date": "2026-06-21"
+    "latest_date": "2026-06-22"
   },
   "movers": {
     "insufficient": false,
@@ -14,32 +14,32 @@
       {
         "gpu_model": "RTX 3090",
         "now_price": 0.46,
-        "old_price": 0.3014,
-        "pct_change": 52.6
+        "old_price": 0.2986,
+        "pct_change": 54.0
       },
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.69,
-        "old_price": 0.4755,
-        "pct_change": 45.1
+        "old_price": 0.471,
+        "pct_change": 46.5
       },
       {
         "gpu_model": "RTX 4080",
         "now_price": 0.5,
-        "old_price": 0.3773,
-        "pct_change": 32.5
+        "old_price": 0.3748,
+        "pct_change": 33.4
       },
       {
         "gpu_model": "A100 80GB SXM",
         "now_price": 2.2502,
-        "old_price": 1.8924,
-        "pct_change": 18.9
+        "old_price": 1.8971,
+        "pct_change": 18.6
       },
       {
         "gpu_model": "L4",
         "now_price": 0.6337,
-        "old_price": 0.5532,
-        "pct_change": 14.5
+        "old_price": 0.5522,
+        "pct_change": 14.8
       }
     ]
   },
@@ -51,28 +51,28 @@
       "spread_pct": 90.0
     },
     {
-      "gpu_model": "V100 16GB",
-      "od_price": 0.17,
-      "sp_price": 0.0209,
-      "spread_pct": 87.7
-    },
-    {
       "gpu_model": "g6.2xlarge",
       "od_price": 0.9776,
       "sp_price": 0.1259,
       "spread_pct": 87.1
     },
     {
-      "gpu_model": "RTX 4090",
-      "od_price": 0.69,
-      "sp_price": 0.1344,
-      "spread_pct": 80.5
-    },
-    {
       "gpu_model": "A10G",
       "od_price": 1.006,
       "sp_price": 0.241,
       "spread_pct": 76.0
+    },
+    {
+      "gpu_model": "T4",
+      "od_price": 0.35,
+      "sp_price": 0.0894,
+      "spread_pct": 74.5
+    },
+    {
+      "gpu_model": "L4",
+      "od_price": 0.39,
+      "sp_price": 0.1039,
+      "spread_pct": 73.4
     }
   ],
   "flagship_trend": [
@@ -323,6 +323,13 @@
     },
     {
       "date": "2026-06-21",
+      "avg_on_demand": 4.1235,
+      "avg_spot": 2.1461,
+      "n_od": 9,
+      "n_sp": 5
+    },
+    {
+      "date": "2026-06-22",
       "avg_on_demand": 4.1235,
       "avg_spot": 2.1461,
       "n_od": 9,
