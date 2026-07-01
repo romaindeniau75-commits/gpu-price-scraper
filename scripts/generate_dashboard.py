@@ -129,6 +129,17 @@ AWS_SKU_TO_GPU: dict[str, tuple[str, int]] = {
 # Systems section is curated and exempt from this filter.
 MIN_PROVIDERS_LAST_7D: int = 2
 
+# Atlas H100 Index — provider cohort definitions
+# Neocloud: pure GPU-cloud operators (not hyperscaler, not marketplace)
+_NEOCLOUD_PROVIDERS = frozenset({
+    "CoreWeave", "Crusoe", "DataCrunch", "Hyperstack", "Nebius",
+})
+# Hyperscalers: major cloud platforms used as the "ceiling" reference line
+_HYPERSCALER_PROVIDERS = frozenset({"AWS", "Azure", "GCP", "OCI"})
+# Minimum neocloud providers required to compute a valid index value.
+# Below this, neo_median/p25/p75 are returned as None rather than a noisy number.
+MIN_INDEX_PROVIDERS: int = 4
+
 # Providers whose RTX gaming cards count as datacenter inference
 _DC_PROVIDERS = frozenset({
     "RunPod", "RunPod Community", "Vast.ai", "TensorDock",
@@ -649,23 +660,55 @@ def _build_min_provider_bases(
     return frozenset(result)
 
 
+def _percentile(sorted_vals: list[float], p: float) -> Optional[float]:
+    """Linear-interpolation percentile on a pre-sorted list. p in [0, 1]."""
+    n = len(sorted_vals)
+    if n == 0:
+        return None
+    if n == 1:
+        return sorted_vals[0]
+    idx = p * (n - 1)
+    lo = int(idx)
+    hi = min(lo + 1, n - 1)
+    frac = idx - lo
+    return sorted_vals[lo] + frac * (sorted_vals[hi] - sorted_vals[lo])
+
+
 def compute_h100_index(con: sqlite3.Connection) -> list[dict]:
-    """Compute the Atlas H100 Index: per-date average of per-provider minimums.
+    """Atlas H100 Index — neocloud H100 SXM on-demand median + IQR, with hyperscaler ceiling.
 
-    Methodology for each date:
-      1. Take the minimum H100 price per (provider, tier) — one price point per cloud.
-      2. Average those per-provider minimums — represents the typical market price.
-    This is more representative than a flat average because it isn't biased by
-    providers that list many H100 variants at similar prices.
+    Cohort split:
+      Neocloud (index line + IQR band): CoreWeave, Crusoe, DataCrunch, Hyperstack, Nebius
+      Hyperscaler (ceiling reference):  AWS, Azure, GCP, OCI
+      Marketplaces excluded:            RunPod, RunPod Community, Vast.ai
 
-    Plausibility bounds applied: $1.50–$15.00 (captures hyperscalers at ~$10-12/hr).
-    No 3× median filter (H100 has a legitimately wide spread neocloud↔hyperscaler).
+    Methodology per date:
+      1. H100 SXM on-demand only — strips PCIe/NVL form-factor noise.
+      2. MIN per provider (one price point per cloud) → removes variant bias.
+      3. Median + P25/P75 (IQR band) across neocloud providers.
+      4. Hyperscaler ceiling = median of hyperscaler mins.
+      5. Neocloud spot: if exactly 1 neocloud has spot H100 SXM, expose as a
+         named point (price + provider). >1 providers → defer (not yet a statistic).
 
-    Returns a list sorted by date:
-      [{"date": "2026-05-10", "avg_on_demand": 3.12, "n_od": 8,
-                               "avg_spot": 1.05,      "n_sp": 5}, ...]
+    Returns a list sorted by date. Each entry:
+      {
+        "date":             str,
+        "neo_median":       float | None,   # None if neo_n < MIN_INDEX_PROVIDERS
+        "neo_p25":          float | None,
+        "neo_p75":          float | None,
+        "neo_n":            int,
+        "hyper_median":     float | None,
+        "hyper_n":          int,
+        "hyper_spread_pct": float | None,   # (hyper - neo) / hyper * 100
+        "spot_price":       float | None,   # only when spot_n == 1
+        "spot_provider":    str   | None,
+        "spot_n":           int,
+      }
     """
     _H100_LO, _H100_HI = _PLAUSIBILITY_BOUNDS["H100"]  # 1.50, 15.00
+
+    neo_csv    = ",".join(f"'{p}'" for p in sorted(_NEOCLOUD_PROVIDERS))
+    hyper_csv  = ",".join(f"'{p}'" for p in sorted(_HYPERSCALER_PROVIDERS))
 
     all_dates_rows = con.execute(
         "SELECT DISTINCT snapshot_date FROM price_history ORDER BY snapshot_date"
@@ -675,78 +718,113 @@ def compute_h100_index(con: sqlite3.Connection) -> list[dict]:
     latest_date = all_dates_rows[-1][0] if all_dates_rows else None
 
     for (date,) in all_dates_rows:
-        # Per-provider minimum for on-demand
-        od_rows = con.execute(
-            """
-            WITH h100 AS (
-                SELECT provider, price_per_gpu_hour
-                FROM   price_history
-                WHERE  gpu_model LIKE '%H100%'
-                  AND  snapshot_date = ?
-                  AND  availability_tier = 'on_demand'
-                  AND  price_per_gpu_hour BETWEEN ? AND ?
-            )
-            SELECT provider, MIN(price_per_gpu_hour) AS min_price
-            FROM   h100
+        # ── Neocloud H100 SXM on-demand ─────────────────────────────────
+        neo_rows = con.execute(
+            f"""
+            SELECT provider, MIN(price_per_gpu_hour) AS min_p
+            FROM   price_history
+            WHERE  gpu_model = 'H100 SXM'
+              AND  snapshot_date = ?
+              AND  availability_tier = 'on_demand'
+              AND  price_per_gpu_hour BETWEEN ? AND ?
+              AND  provider IN ({neo_csv})
             GROUP  BY provider
+            ORDER  BY min_p
             """,
             (date, _H100_LO, _H100_HI),
         ).fetchall()
 
-        # Per-provider minimum for spot / interruptible / community
-        sp_rows = con.execute(
-            """
-            WITH h100 AS (
-                SELECT provider, price_per_gpu_hour
-                FROM   price_history
-                WHERE  gpu_model LIKE '%H100%'
-                  AND  snapshot_date = ?
-                  AND  availability_tier IN ('spot', 'interruptible', 'community')
-                  AND  price_per_gpu_hour BETWEEN ? AND ?
-            )
-            SELECT provider, MIN(price_per_gpu_hour) AS min_price
-            FROM   h100
+        neo_prices = sorted(r[1] for r in neo_rows)
+        neo_n = len(neo_prices)
+
+        if neo_n >= MIN_INDEX_PROVIDERS:
+            neo_median = _percentile(neo_prices, 0.50)
+            neo_p25    = _percentile(neo_prices, 0.25)
+            neo_p75    = _percentile(neo_prices, 0.75)
+        else:
+            neo_median = neo_p25 = neo_p75 = None
+
+        # ── Hyperscaler ceiling ──────────────────────────────────────────
+        hyper_rows = con.execute(
+            f"""
+            SELECT provider, MIN(price_per_gpu_hour) AS min_p
+            FROM   price_history
+            WHERE  gpu_model = 'H100 SXM'
+              AND  snapshot_date = ?
+              AND  availability_tier = 'on_demand'
+              AND  price_per_gpu_hour BETWEEN ? AND ?
+              AND  provider IN ({hyper_csv})
             GROUP  BY provider
+            ORDER  BY min_p
             """,
-            (date, _H100_LO * 0.30, _H100_HI),  # spot floor at 30% of on-demand floor
+            (date, _H100_LO, _H100_HI),
         ).fetchall()
 
-        od_prices = [r[1] for r in od_rows]
-        sp_prices = [r[1] for r in sp_rows]
-        avg_od = round(sum(od_prices) / len(od_prices), 4) if od_prices else None
-        avg_sp = round(sum(sp_prices) / len(sp_prices), 4) if sp_prices else None
+        hyper_prices = sorted(r[1] for r in hyper_rows)
+        hyper_n      = len(hyper_prices)
+        hyper_median = _percentile(hyper_prices, 0.50) if hyper_n >= 1 else None
 
-        entry = {
-            "date":         date,
-            "avg_on_demand": avg_od,
-            "avg_spot":      avg_sp,
-            "n_od":          len(od_prices),
-            "n_sp":          len(sp_prices),
+        hyper_spread_pct: Optional[float] = None
+        if neo_median is not None and hyper_median is not None and hyper_median > 0:
+            hyper_spread_pct = round((hyper_median - neo_median) / hyper_median * 100, 1)
+
+        # ── Neocloud spot (single-source named point) ────────────────────
+        spot_rows = con.execute(
+            f"""
+            SELECT provider, MIN(price_per_gpu_hour) AS min_p
+            FROM   price_history
+            WHERE  gpu_model = 'H100 SXM'
+              AND  snapshot_date = ?
+              AND  availability_tier IN ('spot', 'interruptible')
+              AND  provider IN ({neo_csv})
+            GROUP  BY provider
+            ORDER  BY min_p
+            """,
+            (date,),
+        ).fetchall()
+
+        spot_n        = len(spot_rows)
+        spot_price    = round(spot_rows[0][1], 4) if spot_n == 1 else None
+        spot_provider = spot_rows[0][0]           if spot_n == 1 else None
+
+        entry: dict = {
+            "date":             date,
+            "neo_median":       round(neo_median, 4) if neo_median is not None else None,
+            "neo_p25":          round(neo_p25, 4)    if neo_p25    is not None else None,
+            "neo_p75":          round(neo_p75, 4)    if neo_p75    is not None else None,
+            "neo_n":            neo_n,
+            "hyper_median":     round(hyper_median, 4) if hyper_median is not None else None,
+            "hyper_n":          hyper_n,
+            "hyper_spread_pct": hyper_spread_pct,
+            "spot_price":       spot_price,
+            "spot_provider":    spot_provider,
+            "spot_n":           spot_n,
         }
         result.append(entry)
 
-        # Diagnostic logging for the latest date only
+        # ── Diagnostic logging (latest date only) ────────────────────────
         if date == latest_date:
             print(f"H100 Index | snapshot {date}")
-            raw_count = con.execute(
-                "SELECT COUNT(*) FROM price_history WHERE gpu_model LIKE '%H100%' AND snapshot_date = ?",
+            raw_n = con.execute(
+                "SELECT COUNT(*) FROM price_history WHERE gpu_model = 'H100 SXM' AND snapshot_date = ?",
                 (date,),
             ).fetchone()[0]
-            print(f"  raw H100 prices in DB      : {raw_count}")
-            plaus_count = con.execute(
-                """SELECT COUNT(*) FROM price_history
-                   WHERE gpu_model LIKE '%H100%' AND snapshot_date = ?
-                     AND price_per_gpu_hour BETWEEN ? AND ?""",
-                (date, _H100_LO, _H100_HI),
-            ).fetchone()[0]
-            print(f"  after plausibility bounds  : {plaus_count}  (${_H100_LO:.2f}–${_H100_HI:.2f})")
-            print(f"  after provider dedup       : on-demand={len(od_prices)}, spot={len(sp_prices)}")
-            if avg_od is not None:
-                print(f"  on-demand: avg=${avg_od:.2f}/hr across {len(od_prices)} providers")
-            if avg_sp is not None:
-                print(f"  spot/community: avg=${avg_sp:.2f}/hr across {len(sp_prices)} providers")
-            if avg_od and avg_sp and avg_od > avg_sp:
-                print(f"  spread: -{(avg_od - avg_sp) / avg_od * 100:.1f}%")
+            print(f"  H100 SXM raw prices        : {raw_n}")
+            print(f"  neocloud providers         : {neo_n}  {[r[0] for r in neo_rows]}")
+            print(f"  neocloud prices (sorted)   : {[round(p, 2) for p in neo_prices]}")
+            if neo_median is not None:
+                print(f"  neocloud median            : ${neo_median:.4f}  IQR=[${neo_p25:.4f}, ${neo_p75:.4f}]")
+            else:
+                print(f"  neocloud index             : N/A (n={neo_n} < {MIN_INDEX_PROVIDERS})")
+            print(f"  hyperscaler providers      : {hyper_n}  {[r[0] for r in hyper_rows]}")
+            if hyper_median is not None:
+                print(f"  hyperscaler median         : ${hyper_median:.4f}")
+            if hyper_spread_pct is not None:
+                print(f"  neocloud↔hyperscaler spread: {hyper_spread_pct:.1f}%")
+            if spot_n == 1:
+                print(f"  spot neocloud (single src) : ${spot_price:.4f}  @ {spot_provider}")
+            elif spot_n > 1:
+                print(f"  spot neocloud              : {spot_n} providers (not exposed as single-source)")
 
     return result
 
@@ -1298,7 +1376,7 @@ if (legBtn) {
   });
 }
 
-/* ── Flagship trend chart ───────────────────────────────────────────── */
+/* ── Atlas H100 Index chart ─────────────────────────────────────────── */
 (function() {
   var canvas = document.getElementById('flagship-trend-canvas');
   if (!canvas) return;
@@ -1318,21 +1396,51 @@ if (legBtn) {
     data: {
       labels: labels,
       datasets: [
+        // IQR band: P25 fills forward to P75 (dataset index +1)
         {
-          label: 'On-Demand',
-          data: s.on_demand,
-          borderColor: '#3B82F6',
-          backgroundColor: 'rgba(59,130,246,0.08)',
-          borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
-          fill: true, tension: 0.35, spanGaps: true,
+          label: '_iqr_p25',
+          data: s.neo_p25,
+          borderWidth: 0, pointRadius: 0,
+          fill: '+1',
+          backgroundColor: 'rgba(59,130,246,0.10)',
+          tension: 0.35, spanGaps: true,
         },
+        // P75 — upper edge of IQR band (no visible line)
         {
-          label: 'Spot / Interruptible',
-          data: s.spot,
+          label: '_iqr_p75',
+          data: s.neo_p75,
+          borderWidth: 0, pointRadius: 0,
+          fill: false,
+          tension: 0.35, spanGaps: true,
+        },
+        // Neocloud median — main index line
+        {
+          label: 'Neocloud median',
+          data: s.neo_median,
+          borderColor: '#3B82F6',
+          backgroundColor: 'transparent',
+          borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 5,
+          fill: false, tension: 0.35, spanGaps: true,
+        },
+        // Hyperscaler ceiling — amber dashed reference
+        {
+          label: 'Hyperscaler ceiling',
+          data: s.hyper_median,
+          borderColor: '#F59E0B',
+          backgroundColor: 'transparent',
+          borderWidth: 2, pointRadius: 2, pointHoverRadius: 4,
+          borderDash: [6, 3],
+          fill: false, tension: 0.35, spanGaps: true,
+        },
+        // Neocloud spot — single-source labelled points (never a stat line)
+        {
+          label: 'Spot (single source)',
+          data: s.spot_points,
           borderColor: '#06B6D4',
-          backgroundColor: 'rgba(6,182,212,0.08)',
-          borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
-          fill: true, tension: 0.35, spanGaps: true,
+          backgroundColor: '#06B6D4',
+          borderWidth: 0, pointRadius: 6, pointHoverRadius: 8,
+          pointStyle: 'crossRot',
+          showLine: false, spanGaps: false,
         }
       ]
     },
@@ -1345,7 +1453,11 @@ if (legBtn) {
           labels: {
             color: '#94A3B8', usePointStyle: true,
             pointStyleWidth: 10, boxHeight: 6,
-            font: { size: 12, weight: '600' }
+            font: { size: 12, weight: '600' },
+            filter: function(item) {
+              // Hide internal IQR bound datasets from the legend
+              return item.text !== '_iqr_p25' && item.text !== '_iqr_p75';
+            }
           }
         },
         tooltip: {
@@ -1360,8 +1472,15 @@ if (legBtn) {
             },
             label: function(item) {
               var v = item.raw;
-              if (v === null || v === undefined) return item.dataset.label + ': N/A';
-              return item.dataset.label + ': $' + v.toFixed(4) + '/hr avg';
+              var lbl = item.dataset.label;
+              // IQR internals — hide from tooltip
+              if (lbl === '_iqr_p25' || lbl === '_iqr_p75') return null;
+              if (v === null || v === undefined) return null;
+              if (lbl === 'Spot (single source)') {
+                var prov = (s.spot_labels && s.spot_labels[item.dataIndex]) || '';
+                return 'Spot' + (prov ? ' (' + prov + ')' : '') + ': $' + v.toFixed(4) + '/hr · single source';
+              }
+              return lbl + ': $' + v.toFixed(4) + '/hr';
             }
           }
         }
@@ -1424,14 +1543,25 @@ def _render_systems_section_html(systems: list[dict]) -> str:
 
 
 def _render_flagship_trend_html(trend: list[dict]) -> str:
-    """Render the Atlas H100 Index section HTML."""
+    """Render the Atlas H100 Index section HTML.
+
+    Expects the new compute_h100_index() schema:
+      neo_median, neo_p25, neo_p75, neo_n
+      hyper_median, hyper_n, hyper_spread_pct
+      spot_price, spot_provider, spot_n
+    """
     have_chart = len(trend) >= 2
 
     if have_chart:
         series = {
-            "labels":    [d["date"]         for d in trend],
-            "on_demand": [d["avg_on_demand"] for d in trend],
-            "spot":      [d["avg_spot"]      for d in trend],
+            "labels":      [d["date"]           for d in trend],
+            "neo_median":  [d["neo_median"]      for d in trend],
+            "neo_p25":     [d["neo_p25"]         for d in trend],
+            "neo_p75":     [d["neo_p75"]         for d in trend],
+            "hyper_median":[d["hyper_median"]    for d in trend],
+            # Spot as labelled points: value only when single-source
+            "spot_points": [d["spot_price"]      for d in trend],
+            "spot_labels": [d["spot_provider"]   for d in trend],
         }
         chart_inner = (
             f'<div class="trend-chart-wrap">'
@@ -1455,46 +1585,76 @@ def _render_flagship_trend_html(trend: list[dict]) -> str:
             f'</div>'
         )
 
-    # Mini-stats chips (H100-specific labelling with provider counts)
+    # ── Stats chips ──────────────────────────────────────────────────────
     stats_parts: list[str] = []
     if trend:
         latest = trend[-1]
-        od   = latest.get("avg_on_demand")
-        sp   = latest.get("avg_spot")
-        n_od = latest.get("n_od", 0)
-        n_sp = latest.get("n_sp", 0)
-        if od is not None:
+        neo_med  = latest.get("neo_median")
+        neo_p25  = latest.get("neo_p25")
+        neo_p75  = latest.get("neo_p75")
+        neo_n    = latest.get("neo_n", 0)
+        hyper    = latest.get("hyper_median")
+        hyper_n  = latest.get("hyper_n", 0)
+        h_spread = latest.get("hyper_spread_pct")
+        sp_price = latest.get("spot_price")
+        sp_prov  = latest.get("spot_provider") or ""
+
+        # Neocloud index chip (median + IQR)
+        if neo_med is not None:
+            iqr_str = (
+                f" &middot; IQR ${neo_p25:.2f}–${neo_p75:.2f}"
+                if neo_p25 is not None and neo_p75 is not None else ""
+            )
             stats_parts.append(
-                f'<div class="trend-stat">H100 best on-demand avg: '
-                f'<strong>${od:.2f}/hr</strong>'
-                f'<span style="font-weight:400"> ({n_od} provider{"s" if n_od != 1 else ""})</span>'
+                f'<div class="trend-stat">Neocloud median: '
+                f'<strong>${neo_med:.2f}/hr</strong>'
+                f'<span style="font-weight:400"> ({neo_n} providers{iqr_str})</span>'
                 f'</div>'
             )
-        if sp is not None:
+        else:
             stats_parts.append(
-                f'<div class="trend-stat">H100 best spot avg: '
-                f'<strong>${sp:.2f}/hr</strong>'
-                f'<span style="font-weight:400"> ({n_sp} provider{"s" if n_sp != 1 else ""})</span>'
+                f'<div class="trend-stat" style="opacity:.5">Neocloud index: '
+                f'<strong>N/A</strong>'
+                f'<span style="font-weight:400"> (need ≥{MIN_INDEX_PROVIDERS} providers, have {neo_n})</span>'
                 f'</div>'
             )
-        if od and sp and od > 0 and od > sp:
-            spread = (od - sp) / od * 100
+
+        # Hyperscaler ceiling chip
+        if hyper is not None:
             stats_parts.append(
-                f'<div class="trend-stat">Current spread: '
-                f'<strong>&minus;{spread:.1f}%</strong>'
-                f'<span style="font-weight:400"> (best on-demand vs best spot)</span>'
+                f'<div class="trend-stat">Hyperscaler ceiling: '
+                f'<strong>${hyper:.2f}/hr</strong>'
+                f'<span style="font-weight:400"> ({hyper_n} provider{"s" if hyper_n != 1 else ""})</span>'
                 f'</div>'
             )
-        # 7-day change chip (only when >= 7 data points)
-        if len(trend) >= 7 and od is not None:
-            old_od = trend[-7].get("avg_on_demand")
-            if old_od and old_od > 0:
-                change = (od - old_od) / old_od * 100
+
+        # Neocloud↔hyperscaler spread
+        if h_spread is not None:
+            stats_parts.append(
+                f'<div class="trend-stat">Neocloud vs hyperscaler: '
+                f'<strong>&minus;{h_spread:.1f}%</strong>'
+                f'</div>'
+            )
+
+        # Spot — single-source named point, never a stat
+        if sp_price is not None:
+            stats_parts.append(
+                f'<div class="trend-stat">Spot ({sp_prov}): '
+                f'<strong>${sp_price:.2f}/hr</strong>'
+                f'<span style="font-weight:400"> · single source</span>'
+                f'</div>'
+            )
+
+        # 7-day change chip on neocloud median
+        if len(trend) >= 7 and neo_med is not None:
+            old_med = trend[-7].get("neo_median")
+            if old_med and old_med > 0:
+                change = (neo_med - old_med) / old_med * 100
                 sign   = "+" if change >= 0 else ""
                 cls    = "ts-up" if change > 0.05 else ("ts-down" if change < -0.05 else "")
                 arrow  = "▲" if change > 0.05 else ("▼" if change < -0.05 else "—")
                 stats_parts.append(
-                    f'<div class="trend-stat">7d change: '
+                    f'<div class="trend-stat">7d change (neocloud): '
                     f'<strong class="{cls}">{arrow} {sign}{change:.1f}%</strong></div>'
                 )
 
@@ -1509,7 +1669,7 @@ def _render_flagship_trend_html(trend: list[dict]) -> str:
         f'<span class="sec-label">Atlas H100 Index</span>'
         f'<div class="sec-rule"></div>'
         f'<span class="sec-sub">'
-        f'Atlas best-price benchmark &middot; what an arbitrage router sees, averaged across 12 clouds'
+        f'Neocloud H100 SXM on-demand &middot; median + IQR band &middot; hyperscaler ceiling for reference'
         f'</span>'
         f'</div>\n'
         f'<div class="trend-card">\n'
