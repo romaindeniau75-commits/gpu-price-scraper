@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-07-07T08:45:37.577109+00:00",
+  "generated_at": "2026-07-08T07:42:04.708599+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 52,
-    "total_rows": 13578,
+    "day_count": 53,
+    "total_rows": 13845,
     "median_spot_discount": 63.1,
-    "latest_date": "2026-07-07"
+    "latest_date": "2026-07-08"
   },
   "movers": {
     "insufficient": false,
@@ -14,32 +14,32 @@
       {
         "gpu_model": "RTX 3090",
         "now_price": 0.46,
-        "old_price": 0.3258,
-        "pct_change": 41.2
+        "old_price": 0.3273,
+        "pct_change": 40.5
       },
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.69,
-        "old_price": 0.5075,
-        "pct_change": 36.0
+        "old_price": 0.5095,
+        "pct_change": 35.4
       },
       {
         "gpu_model": "RTX 4080",
         "now_price": 0.5,
-        "old_price": 0.4056,
-        "pct_change": 23.3
+        "old_price": 0.4071,
+        "pct_change": 22.8
       },
       {
         "gpu_model": "B300",
         "now_price": 7.6667,
-        "old_price": 9.797,
-        "pct_change": -21.7
+        "old_price": 9.7504,
+        "pct_change": -21.4
       },
       {
         "gpu_model": "A100 80GB SXM",
         "now_price": 2.2502,
-        "old_price": 1.9943,
-        "pct_change": 12.8
+        "old_price": 1.9989,
+        "pct_change": 12.6
       }
     ]
   },
@@ -741,6 +741,19 @@
     },
     {
       "date": "2026-07-07",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 1.138,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-07-08",
       "neo_median": 2.79,
       "neo_p25": 2.42,
       "neo_p75": 3.04,
