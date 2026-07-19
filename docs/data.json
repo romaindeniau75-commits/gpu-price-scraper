@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-07-18T07:10:49.589671+00:00",
+  "generated_at": "2026-07-19T07:36:39.384567+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 63,
-    "total_rows": 16479,
+    "day_count": 64,
+    "total_rows": 16746,
     "median_spot_discount": 63.1,
-    "latest_date": "2026-07-18"
+    "latest_date": "2026-07-19"
   },
   "movers": {
     "insufficient": false,
@@ -14,32 +14,32 @@
       {
         "gpu_model": "RTX 3090",
         "now_price": 0.46,
-        "old_price": 0.3406,
-        "pct_change": 35.1
+        "old_price": 0.3418,
+        "pct_change": 34.6
       },
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.69,
-        "old_price": 0.5273,
-        "pct_change": 30.8
+        "old_price": 0.5289,
+        "pct_change": 30.4
       },
       {
         "gpu_model": "RTX 4080",
         "now_price": 0.5,
-        "old_price": 0.42,
-        "pct_change": 19.0
+        "old_price": 0.4211,
+        "pct_change": 18.7
       },
       {
         "gpu_model": "A100 80GB SXM",
         "now_price": 2.2502,
-        "old_price": 2.0373,
-        "pct_change": 10.5
+        "old_price": 2.0405,
+        "pct_change": 10.3
       },
       {
         "gpu_model": "L4",
         "now_price": 0.6337,
-        "old_price": 0.5917,
-        "pct_change": 7.1
+        "old_price": 0.5924,
+        "pct_change": 7.0
       }
     ]
   },
@@ -59,8 +59,8 @@
     {
       "gpu_model": "RTX 4090",
       "od_price": 0.69,
-      "sp_price": 0.1344,
-      "spread_pct": 80.5
+      "sp_price": 0.1356,
+      "spread_pct": 80.3
     },
     {
       "gpu_model": "A10G",
@@ -884,6 +884,19 @@
     },
     {
       "date": "2026-07-18",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 1.138,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-07-19",
       "neo_median": 2.79,
       "neo_p25": 2.42,
       "neo_p75": 3.04,
