@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-07-22T07:43:40.580339+00:00",
+  "generated_at": "2026-07-23T07:44:42.673546+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 67,
-    "total_rows": 17523,
+    "day_count": 68,
+    "total_rows": 17785,
     "median_spot_discount": 63.1,
-    "latest_date": "2026-07-22"
+    "latest_date": "2026-07-23"
   },
   "movers": {
     "insufficient": false,
@@ -14,26 +14,26 @@
       {
         "gpu_model": "RTX 3090",
         "now_price": 0.46,
-        "old_price": 0.3452,
-        "pct_change": 33.3
+        "old_price": 0.3463,
+        "pct_change": 32.8
       },
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.69,
-        "old_price": 0.5335,
-        "pct_change": 29.3
+        "old_price": 0.535,
+        "pct_change": 29.0
       },
       {
         "gpu_model": "RTX 4080",
         "now_price": 0.5,
-        "old_price": 0.4242,
-        "pct_change": 17.9
+        "old_price": 0.4252,
+        "pct_change": 17.6
       },
       {
         "gpu_model": "A100 80GB SXM",
         "now_price": 2.2502,
-        "old_price": 2.0495,
-        "pct_change": 9.8
+        "old_price": 2.0524,
+        "pct_change": 9.6
       },
       {
         "gpu_model": "RTX 4000 Ada",
@@ -63,16 +63,16 @@
       "spread_pct": 76.0
     },
     {
+      "gpu_model": "RTX 4090",
+      "od_price": 0.69,
+      "sp_price": 0.1689,
+      "spread_pct": 75.5
+    },
+    {
       "gpu_model": "T4",
       "od_price": 0.35,
       "sp_price": 0.0894,
       "spread_pct": 74.5
-    },
-    {
-      "gpu_model": "L4",
-      "od_price": 0.39,
-      "sp_price": 0.1039,
-      "spread_pct": 73.4
     }
   ],
   "flagship_trend": [
@@ -936,6 +936,19 @@
     },
     {
       "date": "2026-07-22",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 1.138,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-07-23",
       "neo_median": 2.79,
       "neo_p25": 2.42,
       "neo_p75": 3.04,
