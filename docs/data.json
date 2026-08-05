@@ -1,45 +1,45 @@
 {
-  "generated_at": "2026-08-04T07:48:54.279809+00:00",
+  "generated_at": "2026-08-05T07:57:18.332636+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 80,
-    "total_rows": 20941,
+    "day_count": 81,
+    "total_rows": 21205,
     "median_spot_discount": 63.1,
-    "latest_date": "2026-08-04"
+    "latest_date": "2026-08-05"
   },
   "movers": {
     "insufficient": false,
     "movers": [
       {
-        "gpu_model": "RTX 3090",
-        "now_price": 0.46,
-        "old_price": 0.3579,
-        "pct_change": 28.5
+        "gpu_model": "RTX 4090",
+        "now_price": 0.74,
+        "old_price": 0.5519,
+        "pct_change": 34.1
       },
       {
-        "gpu_model": "RTX 4090",
-        "now_price": 0.69,
-        "old_price": 0.5508,
-        "pct_change": 25.3
+        "gpu_model": "RTX 3090",
+        "now_price": 0.46,
+        "old_price": 0.3588,
+        "pct_change": 28.2
       },
       {
         "gpu_model": "RTX 4080",
         "now_price": 0.5,
-        "old_price": 0.4353,
-        "pct_change": 14.9
+        "old_price": 0.436,
+        "pct_change": 14.7
+      },
+      {
+        "gpu_model": "L4",
+        "now_price": 0.667,
+        "old_price": 0.6022,
+        "pct_change": 10.8
       },
       {
         "gpu_model": "A100 80GB SXM",
         "now_price": 2.2502,
-        "old_price": 2.0811,
-        "pct_change": 8.1
-      },
-      {
-        "gpu_model": "RTX 4000 Ada",
-        "now_price": 0.28,
-        "old_price": 0.2619,
-        "pct_change": 6.9
+        "old_price": 2.0832,
+        "pct_change": 8.0
       }
     ]
   },
@@ -57,22 +57,22 @@
       "spread_pct": 87.1
     },
     {
-      "gpu_model": "V100 16GB",
-      "od_price": 0.17,
-      "sp_price": 0.0272,
-      "spread_pct": 84.0
+      "gpu_model": "L4",
+      "od_price": 0.49,
+      "sp_price": 0.1039,
+      "spread_pct": 78.8
+    },
+    {
+      "gpu_model": "RTX 5090",
+      "od_price": 0.99,
+      "sp_price": 0.2129,
+      "spread_pct": 78.5
     },
     {
       "gpu_model": "RTX PRO 4000",
       "od_price": 0.57,
-      "sp_price": 0.1344,
-      "spread_pct": 76.4
-    },
-    {
-      "gpu_model": "A10G",
-      "od_price": 1.006,
-      "sp_price": 0.241,
-      "spread_pct": 76.0
+      "sp_price": 0.1356,
+      "spread_pct": 76.2
     }
   ],
   "flagship_trend": [
@@ -1105,6 +1105,19 @@
     },
     {
       "date": "2026-08-04",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 1.138,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-08-05",
       "neo_median": 2.79,
       "neo_p25": 2.42,
       "neo_p75": 3.04,
