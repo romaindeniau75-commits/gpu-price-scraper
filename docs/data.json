@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-10T06:43:13.445189+00:00",
+  "generated_at": "2026-08-11T06:06:25.418556+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 86,
-    "total_rows": 22516,
+    "day_count": 87,
+    "total_rows": 22786,
     "median_spot_discount": 49.3,
-    "latest_date": "2026-08-10"
+    "latest_date": "2026-08-11"
   },
   "movers": {
     "insufficient": false,
@@ -14,32 +14,32 @@
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.74,
-        "old_price": 0.5575,
-        "pct_change": 32.7
+        "old_price": 0.5586,
+        "pct_change": 32.5
       },
       {
         "gpu_model": "RTX 3090",
         "now_price": 0.46,
-        "old_price": 0.3629,
-        "pct_change": 26.7
+        "old_price": 0.3637,
+        "pct_change": 26.5
       },
       {
         "gpu_model": "RTX 4080",
         "now_price": 0.5,
-        "old_price": 0.4394,
-        "pct_change": 13.8
+        "old_price": 0.44,
+        "pct_change": 13.6
       },
       {
         "gpu_model": "L4",
         "now_price": 0.667,
-        "old_price": 0.6043,
-        "pct_change": 10.4
+        "old_price": 0.6047,
+        "pct_change": 10.3
       },
       {
         "gpu_model": "A100 80GB SXM",
         "now_price": 2.2502,
-        "old_price": 2.0926,
-        "pct_change": 7.5
+        "old_price": 2.0944,
+        "pct_change": 7.4
       }
     ]
   },
@@ -57,22 +57,22 @@
       "spread_pct": 87.1
     },
     {
-      "gpu_model": "L4",
-      "od_price": 0.49,
-      "sp_price": 0.1039,
-      "spread_pct": 78.8
+      "gpu_model": "V100 16GB",
+      "od_price": 0.17,
+      "sp_price": 0.0289,
+      "spread_pct": 83.0
     },
     {
-      "gpu_model": "A10G",
-      "od_price": 1.006,
-      "sp_price": 0.241,
-      "spread_pct": 76.0
+      "gpu_model": "RTX 4090",
+      "od_price": 0.74,
+      "sp_price": 0.1339,
+      "spread_pct": 81.9
     },
     {
-      "gpu_model": "T4",
-      "od_price": 0.35,
-      "sp_price": 0.0894,
-      "spread_pct": 74.5
+      "gpu_model": "RTX 3090",
+      "od_price": 0.46,
+      "sp_price": 0.0944,
+      "spread_pct": 79.5
     }
   ],
   "flagship_trend": [
@@ -1183,6 +1183,19 @@
     },
     {
       "date": "2026-08-10",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 1.625,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-08-11",
       "neo_median": 2.79,
       "neo_p25": 2.42,
       "neo_p75": 3.04,
