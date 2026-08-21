@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-20T05:48:22.312262+00:00",
+  "generated_at": "2026-08-21T05:49:53.569318+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 96,
-    "total_rows": 25186,
+    "day_count": 97,
+    "total_rows": 25453,
     "median_spot_discount": 50.0,
-    "latest_date": "2026-08-20"
+    "latest_date": "2026-08-21"
   },
   "movers": {
     "insufficient": false,
@@ -14,32 +14,32 @@
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.74,
-        "old_price": 0.5708,
-        "pct_change": 29.7
+        "old_price": 0.572,
+        "pct_change": 29.4
       },
       {
         "gpu_model": "RTX 3090",
         "now_price": 0.46,
-        "old_price": 0.3702,
-        "pct_change": 24.2
+        "old_price": 0.3709,
+        "pct_change": 24.0
       },
       {
         "gpu_model": "PRO 6000 MIG 24GB",
         "now_price": 0.59,
-        "old_price": 0.4922,
-        "pct_change": 19.9
+        "old_price": 0.4933,
+        "pct_change": 19.6
       },
       {
         "gpu_model": "RTX 4080",
         "now_price": 0.5,
-        "old_price": 0.4451,
-        "pct_change": 12.3
+        "old_price": 0.4457,
+        "pct_change": 12.2
       },
       {
         "gpu_model": "L4",
         "now_price": 0.667,
-        "old_price": 0.6111,
-        "pct_change": 9.1
+        "old_price": 0.6118,
+        "pct_change": 9.0
       }
     ]
   },
@@ -59,8 +59,8 @@
     {
       "gpu_model": "RTX 4090",
       "od_price": 0.74,
-      "sp_price": 0.1069,
-      "spread_pct": 85.6
+      "sp_price": 0.107,
+      "spread_pct": 85.5
     },
     {
       "gpu_model": "L4",
@@ -69,10 +69,10 @@
       "spread_pct": 78.8
     },
     {
-      "gpu_model": "A10G",
-      "od_price": 1.006,
-      "sp_price": 0.241,
-      "spread_pct": 76.0
+      "gpu_model": "RTX 5080",
+      "od_price": 0.59,
+      "sp_price": 0.1344,
+      "spread_pct": 77.2
     }
   ],
   "flagship_trend": [
@@ -1313,6 +1313,19 @@
     },
     {
       "date": "2026-08-20",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 1.625,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-08-21",
       "neo_median": 2.79,
       "neo_p25": 2.42,
       "neo_p75": 3.04,
