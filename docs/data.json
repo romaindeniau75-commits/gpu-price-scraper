@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-19T09:34:35.196704+00:00",
+  "generated_at": "2026-09-20T09:50:40.086719+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 126,
-    "total_rows": 33152,
+    "day_count": 127,
+    "total_rows": 33418,
     "median_spot_discount": 50.0,
-    "latest_date": "2026-09-19"
+    "latest_date": "2026-09-20"
   },
   "movers": {
     "insufficient": false,
@@ -14,31 +14,31 @@
       {
         "gpu_model": "AMD EPYC",
         "now_price": 0.048,
-        "old_price": 0.0316,
-        "pct_change": 51.7
+        "old_price": 0.0318,
+        "pct_change": 51.0
       },
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.74,
-        "old_price": 0.6017,
-        "pct_change": 23.0
+        "old_price": 0.6026,
+        "pct_change": 22.8
       },
       {
         "gpu_model": "RTX 3090",
         "now_price": 0.46,
-        "old_price": 0.3867,
-        "pct_change": 18.9
+        "old_price": 0.3872,
+        "pct_change": 18.8
       },
       {
         "gpu_model": "PRO 6000 MIG 24GB",
         "now_price": 0.59,
-        "old_price": 0.5169,
-        "pct_change": 14.1
+        "old_price": 0.5175,
+        "pct_change": 14.0
       },
       {
         "gpu_model": "RTX 4080",
         "now_price": 0.5,
-        "old_price": 0.4573,
+        "old_price": 0.4576,
         "pct_change": 9.3
       }
     ]
@@ -1703,6 +1703,19 @@
     },
     {
       "date": "2026-09-19",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 1.674,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-09-20",
       "neo_median": 2.79,
       "neo_p25": 2.42,
       "neo_p75": 3.04,
