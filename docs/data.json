@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-01T11:39:23.138675+00:00",
+  "generated_at": "2026-10-02T11:09:02.155665+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 138,
-    "total_rows": 36366,
-    "median_spot_discount": 45.4,
-    "latest_date": "2026-10-01"
+    "day_count": 139,
+    "total_rows": 36637,
+    "median_spot_discount": 44.8,
+    "latest_date": "2026-10-02"
   },
   "movers": {
     "insufficient": false,
@@ -14,32 +14,32 @@
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.74,
-        "old_price": 0.6111,
-        "pct_change": 21.1
+        "old_price": 0.6119,
+        "pct_change": 20.9
       },
       {
         "gpu_model": "RTX 3090",
         "now_price": 0.46,
-        "old_price": 0.3918,
-        "pct_change": 17.4
+        "old_price": 0.3922,
+        "pct_change": 17.3
       },
       {
         "gpu_model": "PRO 6000 MIG 24GB",
         "now_price": 0.59,
-        "old_price": 0.5236,
-        "pct_change": 12.7
+        "old_price": 0.5241,
+        "pct_change": 12.6
       },
       {
         "gpu_model": "H200 SXM",
-        "now_price": 4.661,
-        "old_price": 4.2279,
-        "pct_change": 10.2
+        "now_price": 4.6845,
+        "old_price": 4.2305,
+        "pct_change": 10.7
       },
       {
         "gpu_model": "RTX 6000 Ada",
-        "now_price": 0.836,
-        "old_price": 0.7592,
-        "pct_change": 10.1
+        "now_price": 0.839,
+        "old_price": 0.7597,
+        "pct_change": 10.4
       }
     ]
   },
@@ -1867,6 +1867,19 @@
       "hyper_n": 3,
       "hyper_spread_pct": 59.4,
       "spot_price": 1.814,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-10-02",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 1.832,
       "spot_provider": "DataCrunch",
       "spot_n": 1
     }
