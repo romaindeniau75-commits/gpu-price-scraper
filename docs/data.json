@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-21T10:14:57.528734+00:00",
+  "generated_at": "2026-10-22T10:16:08.321920+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 158,
-    "total_rows": 41307,
-    "median_spot_discount": 41.7,
-    "latest_date": "2026-10-21"
+    "day_count": 159,
+    "total_rows": 41539,
+    "median_spot_discount": 41.2,
+    "latest_date": "2026-10-22"
   },
   "movers": {
     "insufficient": false,
@@ -14,32 +14,32 @@
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.89,
-        "old_price": 0.6289,
-        "pct_change": 41.5
+        "old_price": 0.6302,
+        "pct_change": 41.2
+      },
+      {
+        "gpu_model": "H200 SXM",
+        "now_price": 5.56,
+        "old_price": 4.3184,
+        "pct_change": 28.8
       },
       {
         "gpu_model": "PRO 6000 MIG 24GB",
         "now_price": 0.69,
-        "old_price": 0.5364,
-        "pct_change": 28.6
-      },
-      {
-        "gpu_model": "H200 SXM",
-        "now_price": 5.531,
-        "old_price": 4.3115,
-        "pct_change": 28.3
+        "old_price": 0.5374,
+        "pct_change": 28.4
       },
       {
         "gpu_model": "PRO 6000 MIG 48GB",
         "now_price": 1.29,
-        "old_price": 1.0461,
-        "pct_change": 23.3
+        "old_price": 1.0477,
+        "pct_change": 23.1
       },
       {
         "gpu_model": "RTX 6000 Ada",
-        "now_price": 0.9415,
-        "old_price": 0.7709,
-        "pct_change": 22.1
+        "now_price": 0.9485,
+        "old_price": 0.7717,
+        "pct_change": 22.9
       }
     ]
   },
@@ -2127,6 +2127,19 @@
       "hyper_n": 3,
       "hyper_spread_pct": 59.4,
       "spot_price": 2.213,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-10-22",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 2.235,
       "spot_provider": "DataCrunch",
       "spot_n": 1
     }
