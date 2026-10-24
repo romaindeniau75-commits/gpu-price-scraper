@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-23T10:09:20.732682+00:00",
+  "generated_at": "2026-10-24T09:35:39.853712+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 160,
-    "total_rows": 41771,
-    "median_spot_discount": 40.5,
-    "latest_date": "2026-10-23"
+    "day_count": 161,
+    "total_rows": 42006,
+    "median_spot_discount": 39.9,
+    "latest_date": "2026-10-24"
   },
   "movers": {
     "insufficient": false,
@@ -14,32 +14,32 @@
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.89,
-        "old_price": 0.6315,
-        "pct_change": 40.9
+        "old_price": 0.6328,
+        "pct_change": 40.6
       },
       {
         "gpu_model": "H200 SXM",
-        "now_price": 5.589,
-        "old_price": 4.3254,
-        "pct_change": 29.2
+        "now_price": 5.6185,
+        "old_price": 4.3326,
+        "pct_change": 29.7
       },
       {
         "gpu_model": "PRO 6000 MIG 24GB",
         "now_price": 0.69,
-        "old_price": 0.5384,
-        "pct_change": 28.2
+        "old_price": 0.5394,
+        "pct_change": 27.9
       },
       {
         "gpu_model": "RTX 6000 Ada",
-        "now_price": 0.9555,
-        "old_price": 0.7725,
-        "pct_change": 23.7
+        "now_price": 0.9625,
+        "old_price": 0.7734,
+        "pct_change": 24.4
       },
       {
         "gpu_model": "PRO 6000 MIG 48GB",
         "now_price": 1.29,
-        "old_price": 1.0493,
-        "pct_change": 22.9
+        "old_price": 1.0508,
+        "pct_change": 22.8
       }
     ]
   },
@@ -2153,6 +2153,19 @@
       "hyper_n": 3,
       "hyper_spread_pct": 59.4,
       "spot_price": 2.258,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-10-24",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 2.28,
       "spot_provider": "DataCrunch",
       "spot_n": 1
     }
