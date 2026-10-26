@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-25T09:51:41.307257+00:00",
+  "generated_at": "2026-10-26T11:10:52.562775+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 162,
-    "total_rows": 42239,
-    "median_spot_discount": 39.9,
-    "latest_date": "2026-10-25"
+    "day_count": 163,
+    "total_rows": 42473,
+    "median_spot_discount": 39.3,
+    "latest_date": "2026-10-26"
   },
   "movers": {
     "insufficient": false,
@@ -14,32 +14,32 @@
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.89,
-        "old_price": 0.6341,
-        "pct_change": 40.4
+        "old_price": 0.6354,
+        "pct_change": 40.1
       },
       {
         "gpu_model": "H200 SXM",
-        "now_price": 5.6185,
-        "old_price": 4.3398,
-        "pct_change": 29.5
+        "now_price": 5.648,
+        "old_price": 4.3471,
+        "pct_change": 29.9
       },
       {
         "gpu_model": "PRO 6000 MIG 24GB",
         "now_price": 0.69,
-        "old_price": 0.5403,
-        "pct_change": 27.7
+        "old_price": 0.5413,
+        "pct_change": 27.5
       },
       {
         "gpu_model": "RTX 6000 Ada",
-        "now_price": 0.9625,
-        "old_price": 0.7744,
-        "pct_change": 24.3
+        "now_price": 0.9695,
+        "old_price": 0.7753,
+        "pct_change": 25.0
       },
       {
         "gpu_model": "PRO 6000 MIG 48GB",
         "now_price": 1.29,
-        "old_price": 1.0524,
-        "pct_change": 22.6
+        "old_price": 1.0539,
+        "pct_change": 22.4
       }
     ]
   },
@@ -57,6 +57,12 @@
       "spread_pct": 87.1
     },
     {
+      "gpu_model": "A100 80GB",
+      "od_price": 1.79,
+      "sp_price": 0.2681,
+      "spread_pct": 85.0
+    },
+    {
       "gpu_model": "L4",
       "od_price": 0.59,
       "sp_price": 0.1039,
@@ -67,12 +73,6 @@
       "od_price": 1.006,
       "sp_price": 0.241,
       "spread_pct": 76.0
-    },
-    {
-      "gpu_model": "T4",
-      "od_price": 0.35,
-      "sp_price": 0.0894,
-      "spread_pct": 74.5
     }
   ],
   "flagship_trend": [
@@ -2179,6 +2179,19 @@
       "hyper_n": 3,
       "hyper_spread_pct": 59.4,
       "spot_price": 2.28,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-10-26",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 2.303,
       "spot_provider": "DataCrunch",
       "spot_n": 1
     }
