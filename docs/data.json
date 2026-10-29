@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-28T11:23:31.641749+00:00",
+  "generated_at": "2026-10-29T11:33:53.796793+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 165,
-    "total_rows": 42945,
-    "median_spot_discount": 38.1,
-    "latest_date": "2026-10-28"
+    "day_count": 166,
+    "total_rows": 43178,
+    "median_spot_discount": 37.5,
+    "latest_date": "2026-10-29"
   },
   "movers": {
     "insufficient": false,
@@ -14,32 +14,32 @@
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.89,
-        "old_price": 0.6379,
-        "pct_change": 39.5
+        "old_price": 0.6391,
+        "pct_change": 39.3
       },
       {
         "gpu_model": "H200 SXM",
-        "now_price": 5.7085,
-        "old_price": 4.3619,
-        "pct_change": 30.9
+        "now_price": 5.739,
+        "old_price": 4.3695,
+        "pct_change": 31.3
+      },
+      {
+        "gpu_model": "RTX 6000 Ada",
+        "now_price": 0.9915,
+        "old_price": 0.7784,
+        "pct_change": 27.4
       },
       {
         "gpu_model": "PRO 6000 MIG 24GB",
         "now_price": 0.69,
-        "old_price": 0.5432,
-        "pct_change": 27.0
-      },
-      {
-        "gpu_model": "RTX 6000 Ada",
-        "now_price": 0.984,
-        "old_price": 0.7773,
-        "pct_change": 26.6
+        "old_price": 0.5441,
+        "pct_change": 26.8
       },
       {
         "gpu_model": "PRO 6000 MIG 48GB",
         "now_price": 1.29,
-        "old_price": 1.0569,
-        "pct_change": 22.1
+        "old_price": 1.0584,
+        "pct_change": 21.9
       }
     ]
   },
@@ -53,8 +53,8 @@
     {
       "gpu_model": "RTX 4090",
       "od_price": 0.89,
-      "sp_price": 0.1074,
-      "spread_pct": 87.9
+      "sp_price": 0.107,
+      "spread_pct": 88.0
     },
     {
       "gpu_model": "g6.2xlarge",
@@ -69,10 +69,10 @@
       "spread_pct": 82.4
     },
     {
-      "gpu_model": "A10G",
-      "od_price": 1.006,
-      "sp_price": 0.241,
-      "spread_pct": 76.0
+      "gpu_model": "RTX 5080",
+      "od_price": 0.59,
+      "sp_price": 0.1348,
+      "spread_pct": 77.2
     }
   ],
   "flagship_trend": [
@@ -2218,6 +2218,19 @@
       "hyper_n": 3,
       "hyper_spread_pct": 59.4,
       "spot_price": 2.35,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-10-29",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 2.373,
       "spot_provider": "DataCrunch",
       "spot_n": 1
     }
