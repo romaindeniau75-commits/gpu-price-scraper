@@ -29,6 +29,7 @@ PROVIDER_CONFIDENCE: dict[str, float] = {
     "DataCrunch":       0.88,
     "Hyperstack":       0.80,
     "Nebius":           0.82,
+    "Runcrate":         0.88,
     "Fluidstack":       0.78,
 }
 _DEFAULT_CONFIDENCE = 0.70

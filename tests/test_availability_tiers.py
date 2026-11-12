@@ -289,6 +289,59 @@ class TestHyperstackProvider:
         assert all(o.price_per_hour > 0 for o in offers)
 
 
+class TestRuncrateProvider:
+    """Runcrate reads its public pricing feed and maps only unambiguous GPU types."""
+
+    @pytest.mark.asyncio
+    async def test_runcrate_feed(self):
+        from gpu_scraper.providers.runcrate import RuncrateProvider
+
+        # Trimmed from the live feed on 2026-11-08.
+        mock_data = {
+            "gpus": [
+                {"gpu_type": "B300", "name": "B300", "vram": "288GB",
+                 "min_price_hr": 16.47, "available_options": 3},
+                {"gpu_type": "H200", "name": "H200", "vram": "141GB",
+                 "min_price_hr": 5.13, "available_options": 15},
+                {"gpu_type": "H200_nvl", "name": "H200 NVL", "vram": "141GB",
+                 "min_price_hr": 4.67, "available_options": 4},
+                {"gpu_type": "RTXPro6000", "name": "RTX PRO 6000", "vram": "96GB",
+                 "min_price_hr": 2.41, "available_options": 22},
+                # Out of stock: stale price, must be skipped
+                {"gpu_type": "RTX4000Ada", "name": "RTX 4000 Ada", "vram": "20GB",
+                 "min_price_hr": 1.03, "available_options": 0},
+                {"gpu_type": "L40S", "name": "L40S", "vram": "48GB",
+                 "min_price_hr": 0.55, "available_options": 0},
+                # Feed does not say SXM vs PCIe: not mapped
+                {"gpu_type": "H100", "name": "H100", "vram": "80GB",
+                 "min_price_hr": 3.58, "available_options": 15},
+                {"gpu_type": "A100_80G", "name": "A100 80GB", "vram": "80GB",
+                 "min_price_hr": 1.73, "available_options": 15},
+            ],
+            "fetched_at": "2026-11-08T06:30:28.019Z",
+        }
+
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json.return_value = mock_data
+
+        mock_client = AsyncMock()
+        mock_client.get.return_value = mock_resp
+
+        provider = RuncrateProvider()
+        with patch.object(provider, "_get_client", return_value=mock_client):
+            offers = await provider._scrape()
+
+        by_model = {o.gpu_model: o for o in offers}
+        assert set(by_model) == {"B300", "H200 SXM", "H200 NVL", "RTX PRO 6000"}
+        assert all(o.provider == "Runcrate" for o in offers)
+        assert all(o.availability == "on_demand" for o in offers)
+        assert all(o.price_unit == "per_gpu" for o in offers)
+        assert by_model["H200 SXM"].price_per_gpu_hour == pytest.approx(5.13)
+        assert by_model["H200 NVL"].price_per_gpu_hour == pytest.approx(4.67)
+        assert by_model["RTX PRO 6000"].vram_gb == 96
+
+
 class TestNebiusProvider:
     """Nebius returns static prices in multiple regions."""
 

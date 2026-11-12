@@ -11,7 +11,7 @@ Real-time H100 / A100 cloud GPU pricing across 14 providers, with persistent sto
 
 | Layer | What it does |
 |-------|-------------|
-| **Scraper** | Fetches live prices from 14 providers (RunPod, Lambda Labs, Vast.ai, CoreWeave, Paperspace, TensorDock, AWS, GCP, Azure, OCI, DataCrunch, Crusoe, Hyperstack, Nebius) |
+| **Scraper** | Fetches live prices from 15 providers (RunPod, Lambda Labs, Vast.ai, CoreWeave, Paperspace, TensorDock, AWS, GCP, Azure, OCI, DataCrunch, Crusoe, Hyperstack, Nebius, Runcrate) |
 | **Tiers** | Tracks `on_demand`, `spot`, `interruptible`, `community`, and `reserved` per offer; computes `interruptible` flag automatically |
 | **Storage** | Persists every observation to SQLite with full audit trail including availability tier and region canonical bucket |
 | **Analytics** | Computes min/median/max, market spread (on-demand only), spot discount view, and ranked arbitrage opportunities |
@@ -302,6 +302,7 @@ streamlit run dashboard/app.py
 | Crusoe | None | HTML scrape + static fallback | on_demand | 85% |
 | Hyperstack | None | Static table (API requires auth) | on_demand | 80% |
 | Nebius | None | Static table (API requires auth) | on_demand | 82% |
+| Runcrate | None | Public REST API | on_demand | 88% |
 
 ---
 

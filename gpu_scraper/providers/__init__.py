@@ -12,6 +12,7 @@ from .lambda_labs import LambdaLabsProvider
 from .nebius import NebiusProvider
 from .oci import OCIProvider
 from .paperspace import PaperspaceProvider
+from .runcrate import RuncrateProvider
 from .runpod import RunPodProvider
 from .tensordock import TensorDockProvider
 from .vast_ai import VastAIProvider
@@ -31,6 +32,7 @@ ALL_PROVIDERS = [
     CrusoeProvider,
     HyperstackProvider,
     NebiusProvider,
+    RuncrateProvider,
 ]
 
 __all__ = [
@@ -46,6 +48,7 @@ __all__ = [
     "NebiusProvider",
     "OCIProvider",
     "PaperspaceProvider",
+    "RuncrateProvider",
     "RunPodProvider",
     "TensorDockProvider",
     "VastAIProvider",
