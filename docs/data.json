@@ -1,45 +1,45 @@
 {
-  "generated_at": "2026-11-19T14:28:46.754705+00:00",
+  "generated_at": "2026-11-20T14:05:20.050043+00:00",
   "hero": {
     "gpu_count": 20,
     "provider_count": 11,
-    "day_count": 187,
-    "total_rows": 48112,
-    "median_spot_discount": 38.7,
-    "latest_date": "2026-11-19"
+    "day_count": 188,
+    "total_rows": 48344,
+    "median_spot_discount": 36.9,
+    "latest_date": "2026-11-20"
   },
   "movers": {
     "insufficient": false,
     "movers": [
       {
         "gpu_model": "H200 SXM",
-        "now_price": 6.1315,
-        "old_price": 4.5342,
-        "pct_change": 35.2
-      },
-      {
-        "gpu_model": "RTX 5090",
-        "now_price": 1.39,
-        "old_price": 1.0289,
-        "pct_change": 35.1
+        "now_price": 6.1665,
+        "old_price": 4.5421,
+        "pct_change": 35.8
       },
       {
         "gpu_model": "RTX 6000 Ada",
         "now_price": 1.0855,
-        "old_price": 0.8036,
-        "pct_change": 35.1
+        "old_price": 0.8049,
+        "pct_change": 34.9
+      },
+      {
+        "gpu_model": "RTX 5090",
+        "now_price": 1.39,
+        "old_price": 1.0309,
+        "pct_change": 34.8
       },
       {
         "gpu_model": "RTX 4090",
         "now_price": 0.89,
-        "old_price": 0.6625,
-        "pct_change": 34.3
+        "old_price": 0.6635,
+        "pct_change": 34.1
       },
       {
         "gpu_model": "PRO 6000 MIG 48GB",
         "now_price": 1.39,
-        "old_price": 1.0854,
-        "pct_change": 28.1
+        "old_price": 1.0871,
+        "pct_change": 27.9
       }
     ]
   },
@@ -2504,6 +2504,19 @@
       "hyper_n": 3,
       "hyper_spread_pct": 59.4,
       "spot_price": 2.727,
+      "spot_provider": "DataCrunch",
+      "spot_n": 1
+    },
+    {
+      "date": "2026-11-20",
+      "neo_median": 2.79,
+      "neo_p25": 2.42,
+      "neo_p75": 3.04,
+      "neo_n": 5,
+      "hyper_median": 6.88,
+      "hyper_n": 3,
+      "hyper_spread_pct": 59.4,
+      "spot_price": 2.754,
       "spot_provider": "DataCrunch",
       "spot_n": 1
     }
